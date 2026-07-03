@@ -927,6 +927,32 @@
             font-size: 36px;
             font-weight: bold;
           }
+
+          /* Upload Panel styling */
+          .exact-generator-container .upload-panel {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            background-color: rgba(16, 185, 129, 0.03);
+            margin-top: -8px;
+          }
+
+          .exact-generator-container .upload-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--success);
+          }
+
+          .exact-generator-container .upload-content {
+            margin-top: 14px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+          }
         </style>
 
         <div class="dashboard-container">
@@ -950,6 +976,34 @@
                 <div class="form-group">
                   <label for="post-github-token">Token do GitHub</label>
                   <input type="password" id="post-github-token" class="form-control" placeholder="GitHub Personal Access Token">
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload Panel (Collapsible) -->
+            <div class="upload-panel">
+              <div class="upload-toggle" onclick="toggleUploadPanel()">
+                <span>📷 Upload Rápido de Imagem</span>
+                <span id="upload-chevron">▼</span>
+              </div>
+              <div class="upload-content" id="upload-content">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label for="upload-image-file" style="font-size: 13px;">Selecione uma imagem (PNG, JPG, WEBP)</label>
+                  <input type="file" id="upload-image-file" class="form-control" accept="image/*" style="background-color: var(--background); padding: 8px; font-size: 13px;">
+                </div>
+                <button type="button" class="btn-primary" id="btn-upload-image" onclick="handleQuickUpload()" style="width: 100%; padding: 10px; font-size: 14px; background: linear-gradient(135deg, var(--success), #059669); box-shadow: none;">
+                  🚀 Enviar para o GitHub
+                </button>
+                <div id="upload-status" style="font-size: 13px; color: var(--text-muted); text-align: left; min-height: 18px; margin-top: 4px; display: none;"></div>
+                <div id="upload-result-container" style="display: none; margin-top: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+                  <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; text-align: left;">Caminho da Imagem:</div>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" id="uploaded-image-path" class="form-control" readonly style="font-size: 13px; padding: 6px 10px; background: rgba(0,0,0,0.3); color: #fff;" value="">
+                    <button type="button" class="btn-primary" onclick="copyUploadedPath()" style="padding: 6px 12px; font-size: 13px; font-weight: 500; background: var(--primary); white-space: nowrap;">Copiar</button>
+                  </div>
+                  <div id="upload-preview-thumb-container" style="margin-top: 10px; text-align: center;">
+                    <img id="upload-preview-thumb" src="" alt="Thumbnail" style="max-height: 80px; border-radius: 4px; border: 1px solid var(--border);">
+                  </div>
                 </div>
               </div>
             </div>

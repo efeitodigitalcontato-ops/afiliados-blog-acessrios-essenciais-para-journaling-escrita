@@ -749,3 +749,158 @@ function resetGenerator() {
   document.getElementById("status-card").style.display = "none";
   checkCustomHero();
 }
+
+// Media upload helpers
+function toggleUploadPanel() {
+  const content = document.getElementById("upload-content");
+  const chevron = document.getElementById("upload-chevron");
+  if (!content || !chevron) return;
+  
+  if (content.style.display === "flex" || content.style.display === "block") {
+    content.style.display = "none";
+    chevron.textContent = "▼";
+  } else {
+    content.style.display = "flex";
+    chevron.textContent = "▲";
+  }
+}
+
+async function handleQuickUpload() {
+  const fileInput = document.getElementById("upload-image-file");
+  const statusEl = document.getElementById("upload-status");
+  const resultContainer = document.getElementById("upload-result-container");
+  const resultInput = document.getElementById("uploaded-image-path");
+  const thumbImg = document.getElementById("upload-preview-thumb");
+  const btnUpload = document.getElementById("btn-upload-image");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    alert("Selecione um arquivo de imagem para fazer o upload.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  // Validate credentials & site
+  const siteSelect = document.getElementById("multi-select-site");
+  if (!siteSelect || !siteSelect.value) {
+    alert("Selecione um Blog de Destino primeiro para que possamos enviar para o repositório correto.");
+    return;
+  }
+
+  const selectedRepo = siteSelect.value;
+  const site = typeof State !== "undefined" && State.sites ? State.sites.find(s => s.repoName === selectedRepo) : null;
+  if (!site) {
+    alert("Nenhum blog válido de destino selecionado.");
+    return;
+  }
+
+  const githubTokenInput = document.getElementById("post-github-token");
+  const githubToken = (githubTokenInput ? githubTokenInput.value : "") || (typeof State !== "undefined" && State.credentials ? State.credentials.githubToken : "") || localStorage.getItem("github_token");
+  if (!githubToken) {
+    alert("Adicione seu Token do GitHub nas configurações para fazer o upload.");
+    return;
+  }
+
+  let repoOwner = "efeitodigitalcontato-ops"; // Default/Fallback
+  let repoName = site.repoName;
+
+  if (site.repoUrl) {
+    try {
+      const urlParts = site.repoUrl.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, "").split("/");
+      if (urlParts.length >= 2) {
+        repoOwner = urlParts[0];
+        repoName = urlParts[1];
+      }
+    } catch (e) {
+      console.warn("Could not parse repo owner from URL, falling back to default.", e);
+    }
+  }
+
+  statusEl.style.display = "block";
+  statusEl.style.color = "var(--text-muted)";
+  statusEl.textContent = "Lendo arquivo...";
+  btnUpload.disabled = true;
+
+  try {
+    const reader = new FileReader();
+    
+    // Create a promise to handle file reading
+    const fileDataPromise = new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Erro ao ler o arquivo."));
+    });
+
+    reader.readAsDataURL(file);
+    const dataUrl = await fileDataPromise;
+    
+    // Extract base64 part
+    const base64Content = dataUrl.split(",")[1];
+
+    // Generate safe filename
+    const ext = file.name.split('.').pop() || "jpg";
+    const baseName = file.name.substring(0, file.name.lastIndexOf('.')).toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const finalFileName = `${baseName}-${Date.now()}.${ext}`;
+
+    statusEl.style.color = "var(--primary)";
+    statusEl.textContent = "Fazendo upload para o repositório GitHub...";
+
+    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/public/uploads/${finalFileName}`;
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Authorization": `token ${githubToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Upload de imagem via Gerador Ninja: ${finalFileName}`,
+        content: base64Content,
+        branch: "main"
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.message || response.statusText);
+    }
+
+    const servingPath = `/uploads/${finalFileName}`;
+    statusEl.style.color = "var(--success)";
+    statusEl.textContent = "✓ Upload concluído com sucesso!";
+    
+    resultInput.value = servingPath;
+    thumbImg.src = dataUrl;
+    resultContainer.style.display = "block";
+
+    if (typeof showToast === "function") {
+      showToast("Imagem enviada com sucesso!", "success");
+    }
+
+  } catch (err) {
+    console.error(err);
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = `❌ Erro no upload: ${err.message}`;
+  } finally {
+    btnUpload.disabled = false;
+  }
+}
+
+function copyUploadedPath() {
+  const resultInput = document.getElementById("uploaded-image-path");
+  if (!resultInput || !resultInput.value) return;
+
+  resultInput.select();
+  resultInput.setSelectionRange(0, 99999);
+
+  try {
+    navigator.clipboard.writeText(resultInput.value);
+    if (typeof showToast === "function") {
+      showToast("Caminho copiado para a área de transferência!", "success");
+    } else {
+      alert("Caminho copiado!");
+    }
+  } catch (err) {
+    console.error("Failed to copy path: ", err);
+    alert("Caminho: " + resultInput.value);
+  }
+}
