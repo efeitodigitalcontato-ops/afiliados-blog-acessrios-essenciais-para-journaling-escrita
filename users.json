@@ -1,0 +1,292 @@
+[
+  {
+    "name": "Randerson",
+    "email": "rannet10@gmail.com",
+    "password": "226f648b1dca1d4c4182da4de6065ec00614a231067d1b926f7fa75cdcd595d6",
+    "approved": true,
+    "createdAt": "2026-07-02T14:36:38.616Z",
+    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
+    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA",
+    "geminiApiKey": "enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==",
+    "sites": [
+      {
+        "repoName": "afiliados-blog-restaurao-de-biblia-em-sento-s",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-restaurao-de-biblia-em-sento-s",
+        "deployUrl": "https://afiliados-blog-restaurao-de-biblia-em-sento-s.vercel.app",
+        "theme": "Restauração de biblia em Sento Sé"
+      },
+      {
+        "repoName": "afiliados-blog-b",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-b",
+        "deployUrl": "https://afiliados-blog-b.vercel.app",
+        "theme": "b"
+      },
+      {
+        "repoName": "afiliados-blog-restaurando-biblias",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-restaurando-biblias",
+        "deployUrl": "https://afiliados-blog-restaurando-biblias.vercel.app",
+        "theme": "restaurando biblias"
+      },
+      {
+        "repoName": "afiliados-blog-melhores-tnis",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-melhores-tnis",
+        "deployUrl": "https://afiliados-blog-melhores-tnis.vercel.app",
+        "theme": "Melhores Tênis"
+      },
+      {
+        "repoName": "afiliados-blog-cafeteiras-1386",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-cafeteiras-1386",
+        "deployUrl": "https://afiliados-blog-cafeteiras-1386.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-cafeteiras-6815",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-cafeteiras-6815",
+        "deployUrl": "https://afiliados-blog-cafeteiras-6815.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-4015",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-4015",
+        "deployUrl": "https://afiliados-blog-multicategorias-4015.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-4394",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-4394",
+        "deployUrl": "https://afiliados-blog-multicategorias-4394.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-3125",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-3125",
+        "deployUrl": "https://afiliados-blog-multicategorias-3125.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-fogoes",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-fogoes",
+        "deployUrl": "https://icagro.com.br",
+        "theme": "icagro.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-perfumes",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-perfumes",
+        "deployUrl": "https://bibliolab.com.br",
+        "theme": "bibliolab.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-caixasdesom",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-caixasdesom",
+        "deployUrl": "https://acusticateoria.com.br",
+        "theme": "acusticateoria.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-maquinadelavar",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-maquinadelavar",
+        "deployUrl": "https://ibpefex.com.br",
+        "theme": "ibpefex.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-sofas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-sofas",
+        "deployUrl": "https://etecsr.com.br",
+        "theme": "etecsr.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-bicicletas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-bicicletas",
+        "deployUrl": "https://estarsaudemental.com.br",
+        "theme": "estarsaudemental.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-panelas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-panelas",
+        "deployUrl": "https://colinadepedra.com.br",
+        "theme": "colinadepedra.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-edicoesdejaneiro",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-edicoesdejaneiro",
+        "deployUrl": "https://edicoesdejaneiro.com.br",
+        "theme": "edicoesdejaneiro.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-dosertao",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-dosertao",
+        "deployUrl": "https://dosertao.com.br",
+        "theme": "dosertao.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-colchoes-inteligencia-jovem",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-colchoes-inteligencia-jovem",
+        "deployUrl": "https://inteligenciajovem.com.br",
+        "theme": "inteligenciajovem.com.br"
+      }
+    ]
+  },
+  {
+    "name": "Randerson",
+    "email": "randersoncontato@gmail.com",
+    "password": "226f648b1dca1d4c4182da4de6065ec00614a231067d1b926f7fa75cdcd595d6",
+    "approved": true,
+    "createdAt": "2026-07-02T15:04:54.954Z",
+    "sites": [
+      {
+        "repoName": "afiliados-blog-restaurao-de-biblia-em-sento-s",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-restaurao-de-biblia-em-sento-s",
+        "deployUrl": "https://afiliados-blog-restaurao-de-biblia-em-sento-s.vercel.app",
+        "theme": "Restauração de biblia em Sento Sé"
+      },
+      {
+        "repoName": "afiliados-blog-b",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-b",
+        "deployUrl": "https://afiliados-blog-b.vercel.app",
+        "theme": "b",
+        "lastSeoKeyword": "geladeira",
+        "lastSeoPosition": 0,
+        "lastSeoDate": "2026-07-03T16:48:19.243Z"
+      },
+      {
+        "repoName": "afiliados-blog-restaurando-biblias",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-restaurando-biblias",
+        "deployUrl": "https://afiliados-blog-restaurando-biblias.vercel.app",
+        "theme": "restaurando biblias"
+      },
+      {
+        "repoName": "afiliados-blog-melhores-tnis",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-melhores-tnis",
+        "deployUrl": "https://afiliados-blog-melhores-tnis.vercel.app",
+        "theme": "Melhores Tênis"
+      },
+      {
+        "repoName": "afiliados-blog-cafeteiras-1386",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-cafeteiras-1386",
+        "deployUrl": "https://afiliados-blog-cafeteiras-1386.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-cafeteiras-6815",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-cafeteiras-6815",
+        "deployUrl": "https://afiliados-blog-cafeteiras-6815.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-4015",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-4015",
+        "deployUrl": "https://afiliados-blog-multicategorias-4015.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-4394",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-4394",
+        "deployUrl": "https://afiliados-blog-multicategorias-4394.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-multicategorias-3125",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-multicategorias-3125",
+        "deployUrl": "https://afiliados-blog-multicategorias-3125.vercel.app",
+        "theme": "multicategorias"
+      },
+      {
+        "repoName": "afiliados-blog-fogoes",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-fogoes",
+        "deployUrl": "https://icagro.com.br",
+        "theme": "icagro.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-perfumes",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-perfumes",
+        "deployUrl": "https://bibliolab.com.br",
+        "theme": "bibliolab.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-caixasdesom",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-caixasdesom",
+        "deployUrl": "https://acusticateoria.com.br",
+        "theme": "acusticateoria.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-maquinadelavar",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-maquinadelavar",
+        "deployUrl": "https://ibpefex.com.br",
+        "theme": "ibpefex.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-sofas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-sofas",
+        "deployUrl": "https://etecsr.com.br",
+        "theme": "etecsr.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-bicicletas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-bicicletas",
+        "deployUrl": "https://estarsaudemental.com.br",
+        "theme": "estarsaudemental.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-panelas",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-panelas",
+        "deployUrl": "https://colinadepedra.com.br",
+        "theme": "colinadepedra.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-edicoesdejaneiro",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-edicoesdejaneiro",
+        "deployUrl": "https://edicoesdejaneiro.com.br",
+        "theme": "edicoesdejaneiro.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-dosertao",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-dosertao",
+        "deployUrl": "https://dosertao.com.br",
+        "theme": "dosertao.com.br"
+      },
+      {
+        "repoName": "afiliados-blog-colchoes-inteligencia-jovem",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-colchoes-inteligencia-jovem",
+        "deployUrl": "https://inteligenciajovem.com.br",
+        "theme": "inteligenciajovem.com.br",
+        "lastSeoKeyword": "melhores colchões queen",
+        "lastSeoPosition": 0,
+        "lastSeoDate": "2026-07-03T16:49:26.325Z"
+      }
+    ],
+    "geminiApiKey": "enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==",
+    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
+    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA",
+    "twoFactorEnabled": true,
+    "twoFactorSecret": "VRF22K4GM25GCJDH"
+  },
+  {
+    "name": "01 01",
+    "email": "efeitodigitalcontato3@gmail.com",
+    "password": "797e3552604803aef21bb3e2ce7e66768be2513089280002f846f2fd7ab79baf",
+    "approved": true,
+    "createdAt": "2026-07-02T17:14:27.699Z",
+    "sites": [
+      {
+        "repoName": "afiliados-blog-melhores-tnis-para-corrida-custo-benefcio",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-melhores-tnis-para-corrida-custo-benefcio",
+        "deployUrl": "https://afiliados-blog-melhores-tnis-para-corrida-custo-benefcio.vercel.app",
+        "theme": "Melhores tênis para corrida custo-benefício "
+      },
+      {
+        "repoName": "afiliados-blog-melhores-tnis-para-corrida-custo-benefcio-4090",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-melhores-tnis-para-corrida-custo-benefcio-4090",
+        "deployUrl": "https://afiliados-blog-melhores-tnis-para-corrida-custo-benefcio-4090.vercel.app",
+        "theme": "Melhores tênis para corrida custo-benefício "
+      },
+      {
+        "repoName": "afiliados-blog-melhores-tnis-de-corrida",
+        "repoUrl": "https://github.com/efeitodigitalcontato-ops/afiliados-blog-melhores-tnis-de-corrida",
+        "deployUrl": "https://afiliados-blog-melhores-tnis-de-corrida.vercel.app",
+        "theme": "Melhores Tênis de Corrida"
+      }
+    ],
+    "geminiApiKey": "enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==",
+    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
+    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA"
+  }
+]

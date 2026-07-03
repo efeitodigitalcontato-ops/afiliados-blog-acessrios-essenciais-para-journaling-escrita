@@ -1,0 +1,16 @@
+{
+  "name": "inteligencia-jovem-saas-generator",
+  "version": "1.0.0",
+  "description": "SaaS Platform to generate Astro blogs autonomously in the cloud",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "isomorphic-git": "^1.25.10"
+  }
+}
