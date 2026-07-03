@@ -253,11 +253,12 @@
         "lastSeoDate": "2026-07-03T16:49:26.325Z"
       }
     ],
-    "geminiApiKey": "TEST_API_KEY",
+    "geminiApiKey": "enc:QVEuQWI4Uk42SXZIX1FVQ2I4ZE9jQ056SU4xd0JPRWM2YUtVSExrWlRHUDFOQjlnMFlzT0E=",
     "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
     "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA",
     "twoFactorEnabled": true,
-    "twoFactorSecret": "VRF22K4GM25GCJDH"
+    "twoFactorSecret": "VRF22K4GM25GCJDH",
+    "githubToken": ""
   },
   {
     "name": "01 01",
