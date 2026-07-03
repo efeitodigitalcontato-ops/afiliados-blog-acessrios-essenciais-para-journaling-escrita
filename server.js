@@ -2008,10 +2008,12 @@ app.post('/api/save-settings', async (req, res) => {
     return res.status(400).json({ error: 'E-mail do usuário é obrigatório.' });
   }
 
+  console.log(`[SAVE-SETTINGS] Starting update for user: ${userEmail}`);
   const repoPath = 'efeitodigitalcontato-ops/inteligencia-jovem-saas-factory';
   const gToken = DEFAULT_GITHUB_TOKEN;
 
   try {
+    console.log(`[SAVE-SETTINGS] Fetching users.json from GitHub...`);
     const getRes = await apiRequest({
       hostname: 'api.github.com',
       port: 443,
@@ -2025,55 +2027,86 @@ app.post('/api/save-settings', async (req, res) => {
       }
     });
 
-    if (getRes.statusCode === 200 && getRes.body && getRes.body.content) {
-      const fileSha = getRes.body.sha;
-      const content = Buffer.from(getRes.body.content, 'base64').toString('utf8');
-      const users = JSON.parse(content);
-
-      const userIdx = users.findIndex(u => u.email.toLowerCase() === userEmail.toLowerCase());
-      if (userIdx !== -1) {
-        users[userIdx].githubToken = encodeToken(githubToken || "");
-        users[userIdx].vercelToken = encodeToken(vercelToken || "");
-        users[userIdx].vercelTeamId = vercelTeamId || "";
-        users[userIdx].geminiApiKey = encodeToken(geminiApiKey || "");
-
-        const updatedContentBase64 = Buffer.from(JSON.stringify(users, null, 2), 'utf8').toString('base64');
-        const putRes = await apiRequest({
-          hostname: 'api.github.com',
-          port: 443,
-          path: `/repos/${repoPath}/contents/users.json`,
-          method: 'PUT',
-          headers: {
-            'Authorization': `token ${gToken}`,
-            'User-Agent': 'SaaS-Generator-App',
-            'Content-Type': 'application/json'
-          }
-        }, {
-          message: `Update credentials for user: ${userEmail}`,
-          content: updatedContentBase64,
-          sha: fileSha
-        });
-
-        if (putRes.statusCode === 200 || putRes.statusCode === 201) {
-          return res.json({
-            success: true,
-            user: {
-              name: users[userIdx].name,
-              email: users[userIdx].email,
-              sites: users[userIdx].sites || [],
-              githubToken: decodeToken(users[userIdx].githubToken),
-              vercelToken: decodeToken(users[userIdx].vercelToken),
-              vercelTeamId: users[userIdx].vercelTeamId,
-              geminiApiKey: decodeToken(users[userIdx].geminiApiKey),
-              twoFactorEnabled: !!users[userIdx].twoFactorEnabled
-            }
-          });
-        }
-      }
+    console.log(`[SAVE-SETTINGS] GET users.json Status: ${getRes.statusCode}`);
+    if (getRes.statusCode !== 200) {
+      console.error(`[SAVE-SETTINGS] Failed to get users.json from GitHub. Status: ${getRes.statusCode}. Response:`, getRes.body);
+      return res.status(getRes.statusCode || 400).json({ 
+        error: `Erro ao buscar banco de usuários do GitHub (Status ${getRes.statusCode}).` 
+      });
     }
-    res.status(400).json({ error: 'Erro ao encontrar usuário ou atualizar credenciais.' });
+
+    if (!getRes.body || !getRes.body.content) {
+      console.error(`[SAVE-SETTINGS] GET response did not contain content.`);
+      return res.status(400).json({ error: 'Resposta do GitHub não contém conteúdo.' });
+    }
+
+    const fileSha = getRes.body.sha;
+    const content = Buffer.from(getRes.body.content, 'base64').toString('utf8');
+    let users = [];
+    try {
+      users = JSON.parse(content);
+    } catch (parseErr) {
+      console.error(`[SAVE-SETTINGS] Failed to parse users.json:`, parseErr);
+      return res.status(500).json({ error: 'Erro ao processar arquivo de usuários do banco.' });
+    }
+
+    const userIdx = users.findIndex(u => u.email.toLowerCase() === userEmail.toLowerCase());
+    if (userIdx === -1) {
+      console.warn(`[SAVE-SETTINGS] User ${userEmail} not found in users.json (Total users: ${users.length})`);
+      return res.status(404).json({ 
+        error: `Usuário com e-mail ${userEmail} não foi encontrado no sistema.` 
+      });
+    }
+
+    console.log(`[SAVE-SETTINGS] User found at index ${userIdx}. Updating fields...`);
+    users[userIdx].githubToken = encodeToken(githubToken || "");
+    users[userIdx].vercelToken = encodeToken(vercelToken || "");
+    users[userIdx].vercelTeamId = vercelTeamId || "";
+    users[userIdx].geminiApiKey = encodeToken(geminiApiKey || "");
+
+    const updatedContentBase64 = Buffer.from(JSON.stringify(users, null, 2), 'utf8').toString('base64');
+    console.log(`[SAVE-SETTINGS] Saving updated users.json to GitHub with SHA: ${fileSha}...`);
+    
+    const putRes = await apiRequest({
+      hostname: 'api.github.com',
+      port: 443,
+      path: `/repos/${repoPath}/contents/users.json`,
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${gToken}`,
+        'User-Agent': 'SaaS-Generator-App',
+        'Content-Type': 'application/json'
+      }
+    }, {
+      message: `Update credentials for user: ${userEmail}`,
+      content: updatedContentBase64,
+      sha: fileSha
+    });
+
+    console.log(`[SAVE-SETTINGS] PUT users.json Status: ${putRes.statusCode}`);
+    if (putRes.statusCode === 200 || putRes.statusCode === 201) {
+      console.log(`[SAVE-SETTINGS] Credentials successfully updated on GitHub for ${userEmail}.`);
+      return res.json({
+        success: true,
+        user: {
+          name: users[userIdx].name,
+          email: users[userIdx].email,
+          sites: users[userIdx].sites || [],
+          githubToken: decodeToken(users[userIdx].githubToken),
+          vercelToken: decodeToken(users[userIdx].vercelToken),
+          vercelTeamId: users[userIdx].vercelTeamId,
+          geminiApiKey: decodeToken(users[userIdx].geminiApiKey),
+          twoFactorEnabled: !!users[userIdx].twoFactorEnabled
+        }
+      });
+    } else {
+      console.error(`[SAVE-SETTINGS] Failed to save users.json to GitHub. Status: ${putRes.statusCode}. Response:`, putRes.body);
+      return res.status(putRes.statusCode || 400).json({
+        error: `Erro ao salvar credenciais no GitHub (Código: ${putRes.statusCode}). Pode ser um conflito temporário.`
+      });
+    }
   } catch (err) {
-    console.error('Save settings error:', err);
+    console.error('[SAVE-SETTINGS] Save settings unexpected error:', err);
     res.status(500).json({ error: 'Erro interno ao salvar credenciais.' });
   }
 });
