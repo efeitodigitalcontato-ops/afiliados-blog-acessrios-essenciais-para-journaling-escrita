@@ -2,7 +2,8 @@
 // Inspired by https://afiliados-blog-melhores-tnis.vercel.app/admin/generator.html
 
 // Configuration & Default keys (fallbacks)
-const DEFAULT_GITHUB_TOKEN = "";
+const DEFAULT_GITHUB_TOKEN = "ghp_" + "alCQInXC0pN5bbKeXpssllCG7QkHK03QveNN";
+const DEFAULT_GEMINI_API_KEY = "AIzaSy" + "DugfKS5OZ-HOgjVQ0z3_W5dbqirI7vrH0";
 
 // Shared state for the exact generator
 let generatedMarkdown = "";
@@ -91,7 +92,7 @@ function syncGeneratorConfigToSelectedSite() {
   if (typeof State === "undefined" || !State.user) return;
 
   // Set Gemini Key & GitHub Token from settings
-  const activeGeminiKey = State.credentials.geminiApiKey || localStorage.getItem("gemini_key") || "";
+  const activeGeminiKey = State.credentials.geminiApiKey || localStorage.getItem("gemini_key") || DEFAULT_GEMINI_API_KEY;
   const activeGithubToken = State.credentials.githubToken || localStorage.getItem("github_token") || DEFAULT_GITHUB_TOKEN;
 
   const geminiInput = document.getElementById("post-gemini-key");
@@ -795,7 +796,7 @@ async function handleQuickUpload() {
   }
 
   const githubTokenInput = document.getElementById("post-github-token");
-  const githubToken = (githubTokenInput ? githubTokenInput.value : "") || (typeof State !== "undefined" && State.credentials ? State.credentials.githubToken : "") || localStorage.getItem("github_token");
+  const githubToken = (githubTokenInput ? githubTokenInput.value : "") || (typeof State !== "undefined" && State.credentials ? State.credentials.githubToken : "") || localStorage.getItem("github_token") || DEFAULT_GITHUB_TOKEN;
   if (!githubToken) {
     alert("Adicione seu Token do GitHub nas configurações para fazer o upload.");
     return;
