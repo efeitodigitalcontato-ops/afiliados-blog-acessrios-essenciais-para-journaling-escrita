@@ -1056,14 +1056,14 @@ if (btnGetIdeas) {
       return;
     }
     
-    const selectSite = document.getElementById('multi-select-site').value;
-    if (!selectSite) {
-      showToast('Selecione um blog de destino.', 'error');
-      return;
-    }
-    
     btnGetIdeas.disabled = true;
     btnGetIdeas.textContent = '🔍 Pesquisando...';
+    
+    // Obter dados do site selecionado no painel inferior para contexto de tema
+    const siteSelectEl = document.getElementById('multi-select-site');
+    const selectedSiteOption = siteSelectEl && siteSelectEl.selectedOptions.length > 0 ? siteSelectEl.selectedOptions[0] : null;
+    const theme = selectedSiteOption ? (selectedSiteOption.dataset.theme || 'multicategorias') : 'multicategorias';
+    const repoName = siteSelectEl ? siteSelectEl.value : '';
     
     try {
       const response = await fetch('/api/generate-title-ideas', {
@@ -1071,8 +1071,8 @@ if (btnGetIdeas) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keyword,
-          theme: document.getElementById('multi-select-site').selectedOptions[0].dataset.theme,
-          repoName: document.getElementById('multi-select-site').value,
+          theme,
+          repoName,
           githubToken: State.credentials.githubToken,
           geminiApiKey: State.credentials.geminiApiKey
         })
@@ -1083,120 +1083,21 @@ if (btnGetIdeas) {
         throw new Error(result.error || 'Erro ao buscar ideias.');
       }
       
-      const tbody = document.getElementById('ideas-tbody');
-      tbody.innerHTML = '';
-      
-      const defaultAffiliateLink = document.getElementById('multi-default-affiliate')?.value.trim() || '';
-      
-      result.ideas.forEach((idea, idx) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td style="text-align: center;">
-            <input type="checkbox" class="idea-checkbox" data-idx="${idx}" checked>
-          </td>
-          <td>
-            <div class="idea-title-wrapper" style="display: flex; align-items: center; gap: 8px;">
-              <div contenteditable="true" class="idea-title-input" style="flex: 1; min-width: 250px; background: transparent; border: none; color: var(--text-main); font-size: 0.95rem; line-height: 1.4; outline: none; padding: 6px; border-radius: 4px; border-bottom: 1px dashed rgba(255,255,255,0.15); word-break: break-word; transition: all 0.2s;" title="Clique para editar este título">${idea.title}</div>
-              <button type="button" class="btn-edit-title" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" title="Editar Título">
-                <span>✏️</span> Editar
-              </button>
-            </div>
-          </td>
-          <td>
-            <select class="idea-image-select" style="width: 100%; font-size: 0.85rem; padding: 6px;">
-              <option value="auto">🤖 Gerar com IA (Ninja)</option>
-              <option value="manual">📎 Upload de Imagem</option>
-            </select>
-            <input type="file" class="idea-image-file hidden" accept="image/*" style="margin-top: 5px; font-size: 0.8rem;">
-          </td>
-          <td>
-            <input type="url" class="idea-affiliate-link" placeholder="Ex: https://amzn.to/..." style="width: 100%; font-size: 0.85rem; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 4px;" value="${defaultAffiliateLink}">
-          </td>
-          <td>
-            <select class="idea-schedule-select" style="width: 100%; font-size: 0.85rem; padding: 6px;">
-              <option value="now">⚡ Imediato</option>
-              <option value="schedule">📅 Agendar Post</option>
-            </select>
-            <input type="datetime-local" class="idea-schedule-time hidden" style="margin-top: 5px; font-size: 0.8rem; width: 100%;">
-          </td>
-        `;
+      const listContainer = document.getElementById('titles-list');
+      if (listContainer) {
+        listContainer.innerHTML = '';
         
-        // Ativar funcionalidade de edição visual do título
-        const titleInput = tr.querySelector('.idea-title-input');
-        const editBtn = tr.querySelector('.btn-edit-title');
-
-        editBtn.addEventListener('click', () => {
-          const isFocused = document.activeElement === titleInput;
-          if (!isFocused) {
-            titleInput.focus();
-            // Move cursor to end
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(titleInput);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          } else {
-            titleInput.blur();
-          }
-        });
-
-        titleInput.addEventListener('focus', () => {
-          titleInput.style.borderBottom = '1px solid var(--primary)';
-          titleInput.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-          editBtn.innerHTML = '<span>💾</span> Salvar';
-          editBtn.style.color = 'var(--primary)';
-          editBtn.style.borderColor = 'var(--primary)';
-        });
-
-        titleInput.addEventListener('blur', () => {
-          titleInput.style.borderBottom = '1px dashed rgba(255,255,255,0.15)';
-          titleInput.style.backgroundColor = 'transparent';
-          editBtn.innerHTML = '<span>✏️</span> Editar';
-          editBtn.style.color = 'var(--text-muted)';
-          editBtn.style.borderColor = 'var(--border-color)';
-        });
-
-        titleInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            titleInput.blur();
-          }
-        });
-
-        // Ativar condicionalmente inputs de arquivo e agendamento
-        const imageSelect = tr.querySelector('.idea-image-select');
-        const imageFile = tr.querySelector('.idea-image-file');
-        imageSelect.addEventListener('change', (e) => {
-          if (e.target.value === 'manual') {
-            imageFile.classList.remove('hidden');
-          } else {
-            imageFile.classList.add('hidden');
-          }
+        result.ideas.forEach((idea) => {
+          const li = document.createElement('li');
+          li.textContent = idea.title;
+          li.style.padding = '8px 0';
+          li.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+          listContainer.appendChild(li);
         });
         
-        const scheduleSelect = tr.querySelector('.idea-schedule-select');
-        const scheduleTime = tr.querySelector('.idea-schedule-time');
-        scheduleSelect.addEventListener('change', (e) => {
-          if (e.target.value === 'schedule') {
-            scheduleTime.classList.remove('hidden');
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + (idx + 1));
-            tomorrow.setHours(9, 0, 0, 0);
-            // Format to local ISO without offset
-            const offset = tomorrow.getTimezoneOffset();
-            const adjustedDate = new Date(tomorrow.getTime() - (offset*60*1000));
-            scheduleTime.value = adjustedDate.toISOString().slice(0, 16);
-          } else {
-            scheduleTime.classList.add('hidden');
-          }
-        });
-        
-        tbody.appendChild(tr);
-      });
-      
-      document.getElementById('container-ideas-table').style.display = 'block';
-      showToast('Encontramos 10 caudas longas perfeitas!', 'success');
+        document.getElementById('container-ideas-list').style.display = 'block';
+        showToast('Encontramos 10 caudas longas perfeitas!', 'success');
+      }
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -1206,161 +1107,23 @@ if (btnGetIdeas) {
   });
 }
 
-// 2. Check All Toggle
-const checkAllIdeas = document.getElementById('check-all-ideas');
-if (checkAllIdeas) {
-  checkAllIdeas.addEventListener('change', (e) => {
-    document.querySelectorAll('.idea-checkbox').forEach(cb => {
-      cb.checked = e.target.checked;
-    });
-  });
-}
-
-// 3. Botão Cancelar
-const btnCancelMulti = document.getElementById('btn-cancel-multi');
-if (btnCancelMulti) {
-  btnCancelMulti.addEventListener('click', () => {
-    document.getElementById('multi-seed-keyword').value = '';
-    document.getElementById('container-ideas-table').style.display = 'none';
-  });
-}
-
-// Helper to read file as Base64
-function readFileAsBase64(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result.split(',')[1];
-      resolve(base64String);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// 4. Botão Gerar e Publicar Tudo
-const btnGenerateBulk = document.getElementById('btn-generate-bulk');
-if (btnGenerateBulk) {
-  btnGenerateBulk.addEventListener('click', async () => {
-    const repoName = document.getElementById('multi-select-site').value;
-    const selectedRows = Array.from(document.querySelectorAll('.idea-checkbox:checked')).map(cb => cb.closest('tr'));
-    
-    if (selectedRows.length === 0) {
-      showToast('Por favor, selecione pelo menos um artigo para gerar.', 'error');
+// 2. Copiar Todos os Títulos
+const btnCopyTitles = document.getElementById('btn-copy-titles');
+if (btnCopyTitles) {
+  btnCopyTitles.addEventListener('click', () => {
+    const listItems = document.querySelectorAll('#titles-list li');
+    if (listItems.length === 0) {
+      showToast('Nenhum título para copiar.', 'error');
       return;
     }
-    
-    const overlay = document.getElementById('multi-generation-overlay');
-    const statusText = document.getElementById('multi-progress-status-text');
-    const barFill = document.getElementById('multi-progress-bar-fill');
-    const stepsList = document.getElementById('multi-progress-steps-list');
-    
-    overlay.classList.remove('hidden');
-    statusText.textContent = 'Iniciando redação em lote...';
-    barFill.style.width = '5%';
-    stepsList.innerHTML = '';
-    
-    try {
-      // Coleta configurações dos posts
-      const postsToGenerate = [];
-      for (const row of selectedRows) {
-        const title = row.querySelector('.idea-title-input').textContent.trim();
-        const imgSelect = row.querySelector('.idea-image-select').value;
-        const imgFileInput = row.querySelector('.idea-image-file');
-        const schedSelect = row.querySelector('.idea-schedule-select').value;
-        const schedTimeInput = row.querySelector('.idea-schedule-time');
-        const affiliateLink = row.querySelector('.idea-affiliate-link')?.value.trim() || '';
-        
-        let fileData = null;
-        let fileName = null;
-        if (imgSelect === 'manual' && imgFileInput.files.length > 0) {
-          const file = imgFileInput.files[0];
-          fileData = await readFileAsBase64(file);
-          fileName = file.name;
-        }
-        
-        postsToGenerate.push({
-          title,
-          imageOption: imgSelect,
-          fileData,
-          fileName,
-          publishOption: schedSelect,
-          scheduleTime: schedSelect === 'schedule' ? schedTimeInput.value : null,
-          affiliateLink: affiliateLink || null
-        });
-      }
-      
-      const totalPosts = postsToGenerate.length;
-      let completedPosts = 0;
-      
-      // Envia requisições de geração e deploy para o servidor
-      const response = await fetch('/api/bulk-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repoName,
-          posts: postsToGenerate,
-          githubToken: State.credentials.githubToken,
-          geminiApiKey: State.credentials.geminiApiKey,
-          userEmail: State.user.email
-        })
+    const textToCopy = Array.from(listItems).map(li => li.textContent.trim()).join('\n');
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        showToast('Todos os títulos foram copiados para a área de transferência!', 'success');
+      })
+      .catch(err => {
+        showToast('Erro ao copiar títulos: ' + err.message, 'error');
       });
-      
-      const result = await response.json();
-      if (!response.ok || result.error) {
-        throw new Error(result.error || 'Erro na geração em lote.');
-      }
-      
-      // Animação/logs de progresso de escrita e deploy
-      for (const post of result.generatedPosts) {
-        const li = document.createElement('li');
-        li.style.margin = '5px 0';
-        
-        if (post.status === 'fallback') {
-          li.style.color = '#fbbf24';
-          li.textContent = `⚠️ [Post] "${post.title}" gerado com conteúdo alternativo (limite da API excedido).`;
-        } else {
-          li.style.color = '#10b981';
-          li.textContent = `✓ [Post] "${post.title}" gerado com sucesso via Gemini IA!`;
-        }
-        
-        stepsList.appendChild(li);
-        
-        completedPosts++;
-        const percent = Math.floor((completedPosts / totalPosts) * 80) + 5;
-        barFill.style.width = `${percent}%`;
-        statusText.textContent = `Geração concluída (${completedPosts}/${totalPosts})...`;
-        await delay(300);
-      }
-      
-      // Inicia fase de push e deploy
-      barFill.style.width = '90%';
-      statusText.textContent = 'Enviando atualizações para o GitHub e Vercel...';
-      const liGit = document.createElement('li');
-      liGit.style.margin = '5px 0';
-      liGit.style.color = '#a855f7';
-      liGit.textContent = `⚡ Efetuando Push para o repositório ${repoName}...`;
-      stepsList.appendChild(liGit);
-      
-      await delay(2000);
-      
-      barFill.style.width = '100%';
-      statusText.textContent = 'Parabéns! Artigos publicados!';
-      const liDone = document.createElement('li');
-      liDone.style.margin = '8px 0';
-      liDone.style.fontWeight = 'bold';
-      liDone.style.color = '#10b981';
-      liDone.textContent = `🎉 Concluído! Blog atualizado com sucesso.`;
-      stepsList.appendChild(liDone);
-      
-      await delay(1500);
-      
-      overlay.classList.add('hidden');
-      showToast(`Sucesso! ${totalPosts} artigos gerados e enviados para publicação!`, 'success');
-      showView('dashboard');
-    } catch (err) {
-      overlay.classList.add('hidden');
-      showToast(`Erro na geração em lote: ${err.message}`, 'error');
-    }
   });
 }
 

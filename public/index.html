@@ -467,14 +467,7 @@
         <div class="wizard-header">
           <span class="wizard-step-indicator" style="background: var(--primary);">Passo 1</span>
           <h2>Gerador de Títulos (Palavras-Chave)</h2>
-          <p>Encontre caudas longas de intenção de busca, selecione até 10 títulos e gere todos os artigos de uma única vez para seu blog estático.</p>
-        </div>
-
-        <div class="form-group">
-          <label for="multi-select-site">Selecione o Blog de Destino *</label>
-          <select id="multi-select-site" required>
-            <!-- Preenchido via JavaScript -->
-          </select>
+          <p>Encontre caudas longas de intenção de busca baseadas em IA e copie-as para gerar seus artigos.</p>
         </div>
 
         <!-- Passo 1: Busca de Títulos -->
@@ -487,59 +480,25 @@
           <span class="field-hint">O Gerador buscará ideias focadas em intenção de busca e termos de cauda longa (Long-Tail).</span>
         </div>
 
-        <div class="form-group" style="margin-top: 1rem;">
-          <label for="multi-default-affiliate">Link de Afiliado Padrão (Opcional)</label>
-          <input type="url" id="multi-default-affiliate" placeholder="Ex: https://shope.ee/... ou https://amzn.to/... (Será pré-preenchido em todos os artigos)" style="width: 100%;">
-          <span class="field-hint">Opcional. Se preenchido, será adicionado automaticamente às ideias de artigos gerados abaixo.</span>
-        </div>
-
-        <!-- Passo 2: Exibição dos 10 Títulos com Checkboxes -->
-        <div id="container-ideas-table" style="display: none; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-          <h3 style="margin-bottom: 1rem; color: var(--primary);">Selecione os Artigos para Geração</h3>
-          <p class="auth-desc" style="margin-bottom: 1.5rem;">Selecione os títulos desejados, configure se quer gerar imagem com IA ou definir uma data de agendamento.</p>
+        <!-- Passo 2: Exibição dos Títulos Gerados para Cópia -->
+        <div id="container-ideas-list" style="display: none; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="color: var(--primary); margin: 0;">Títulos Gerados (SEO Cauda Longa)</h3>
+            <button type="button" class="btn btn-primary" id="btn-copy-titles" style="background: linear-gradient(135deg, #10b981, #059669); border: none;">📋 Copiar Todos os Títulos</button>
+          </div>
+          <p class="auth-desc" style="margin-bottom: 1.5rem;">Estes títulos foram otimizados pela IA para máxima conversão. Copie e cole na ferramenta abaixo para gerar os artigos.</p>
           
-          <div class="table-responsive">
-            <table class="blog-table" style="font-size: 0.95rem;">
-              <thead>
-                <tr>
-                  <th style="width: 40px; text-align: center;"><input type="checkbox" id="check-all-ideas" checked></th>
-                  <th>Ideia de Título Otimizada (Long-Tail)</th>
-                  <th style="width: 180px;">Imagem de Capa</th>
-                  <th style="width: 200px;">Link de Afiliado (Opcional)</th>
-                  <th style="width: 150px;">Publicação / Agendamento</th>
-                </tr>
-              </thead>
-              <tbody id="ideas-tbody">
-                <!-- Populado via JS com as ideias encontradas -->
-              </tbody>
-            </table>
-          </div>
-
-          <div class="wizard-actions" style="margin-top: 2rem;">
-            <button type="button" class="btn btn-outline" id="btn-cancel-multi">Cancelar</button>
-            <button type="button" class="btn btn-primary" id="btn-generate-bulk" style="background: linear-gradient(135deg, #10b981, #059669); border: none;">⚡ Gerar e Publicar Tudo em 1 Clique</button>
-          </div>
-        </div>
-
-        <!-- Overlay de Progresso Multitask -->
-        <div id="multi-generation-overlay" class="hidden">
-          <div class="progress-box" style="max-width: 550px;">
-            <div class="spinner"></div>
-            <h3>Geração em Massa Ativa...</h3>
-            <p id="multi-progress-status-text">Iniciando orquestração inteligente...</p>
-            <div class="progress-bar-container">
-              <div id="multi-progress-bar-fill" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.4s ease;"></div>
-            </div>
-            <ul class="progress-steps" id="multi-progress-steps-list" style="max-height: 180px; overflow-y: auto; text-align: left; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid var(--border-color);">
-              <!-- Lista dinâmica de posts sendo criados e sincronizados -->
-            </ul>
+          <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
+            <ol id="titles-list" style="margin-left: 1.5rem; line-height: 1.8; color: var(--text-main); font-size: 1.05rem;">
+              <!-- Populados via JS -->
+            </ol>
           </div>
         </div>
       </div>
 
       <!-- Divider line -->
       <div style="margin: 3.5rem 0; border-top: 2px dashed rgba(255, 255, 255, 0.1); position: relative;">
-        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--bg-primary); padding: 0 15px; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Ou Crie Manualmente Abaixo</span>
+        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--bg-primary); padding: 0 15px; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Gere os Artigos Abaixo</span>
       </div>
 
       <!-- COMPONENT: GERADOR DE CONTEÚDO MÚLTIPLOS (EXACT LAYOUT FROM GENERATOR.HTML) -->
@@ -999,6 +958,13 @@
             <!-- Generator Form -->
             <form id="generator-form" onsubmit="event.preventDefault(); startGeneration();">
               <div style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <div class="form-group">
+                  <label for="multi-select-site">Selecione o Blog de Destino *</label>
+                  <select id="multi-select-site" class="form-control" required style="background-color: var(--background); color: var(--text);">
+                    <!-- Preenchido via JavaScript -->
+                  </select>
+                </div>
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; background: rgba(0,0,0,0.15); padding: 5px; border-radius: 8px;">
                   <button type="button" id="tab-single" class="btn-tab active" onclick="setGeneratorMode('single')">✍️ Artigo Único</button>
