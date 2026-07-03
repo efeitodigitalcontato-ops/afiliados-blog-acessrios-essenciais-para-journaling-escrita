@@ -574,15 +574,32 @@ async function startBulkGeneration() {
   document.getElementById("status-text").textContent = `Gerando ${titles.length} posts em lote...`;
 
   for (let i = 0; i < titles.length; i++) {
-    const title = titles[i];
+    let lineText = titles[i];
+    let title = lineText;
+    let customLineImage = null;
+
+    // Se houver um separador de imagem (como | ou ;)
+    if (lineText.includes('|')) {
+      const parts = lineText.split('|');
+      title = parts[0].trim();
+      customLineImage = parts[1].trim();
+    } else if (lineText.includes(';')) {
+      const parts = lineText.split(';');
+      title = parts[0].trim();
+      customLineImage = parts[1].trim();
+    }
+
     const currentNum = i + 1;
     const totalNum = titles.length;
 
-    let heroImage = heroSelect.value;
-    if (heroImage === "custom") {
-      heroImage = document.getElementById("post-hero-custom").value.trim() || "/recommended-emma.jpg";
-    } else if (heroOptions.length > 0) {
-      heroImage = heroOptions[i % heroOptions.length];
+    let heroImage = customLineImage;
+    if (!heroImage) {
+      heroImage = heroSelect.value;
+      if (heroImage === "custom") {
+        heroImage = document.getElementById("post-hero-custom").value.trim() || "/recommended-emma.jpg";
+      } else if (heroOptions.length > 0) {
+        heroImage = heroOptions[i % heroOptions.length];
+      }
     }
 
     const logGen = addLog(`[${currentNum}/${totalNum}] Gerando artigo: "${title}"...`, "active");
