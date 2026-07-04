@@ -1320,42 +1320,79 @@ async function consolidateRepoQueue(repoName) {
   }
 
   console.log(`Consolidando ${files.length} posts para o repositório ${repoName}...`);
-  const tempDir = path.join(os.tmpdir(), `consolidated-builder-${repoName}-${Date.now()}`);
-  fs.mkdirSync(tempDir, { recursive: true });
+  const cacheDir = path.join(__dirname, 'cache', repoName);
+  let cloneNeeded = !fs.existsSync(cacheDir);
+
+  if (!cloneNeeded) {
+    if (!fs.existsSync(path.join(cacheDir, '.git'))) {
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+      cloneNeeded = true;
+    }
+  }
 
   try {
-    await git.clone({
-      fs,
-      http: gitHttp,
-      dir: tempDir,
-      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-      onAuth: () => ({ username: gToken }),
-      singleBranch: true,
-      depth: 1
-    });
+    if (cloneNeeded) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+      console.log(`Clonando repositório ${repoName} para cache...`);
+      await git.clone({
+        fs,
+        http: gitHttp,
+        dir: cacheDir,
+        url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+        onAuth: () => ({ username: gToken }),
+        singleBranch: true,
+        depth: 1
+      });
+    } else {
+      console.log(`Atualizando repositório ${repoName} em cache...`);
+      try {
+        await git.pull({
+          fs,
+          http: gitHttp,
+          dir: cacheDir,
+          url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+          onAuth: () => ({ username: gToken }),
+          singleBranch: true,
+          fastForwardOnly: true
+        });
+      } catch (pullErr) {
+        console.warn(`Falha ao atualizar o cache de ${repoName}. Reclonando...`, pullErr.message);
+        fs.rmSync(cacheDir, { recursive: true, force: true });
+        fs.mkdirSync(cacheDir, { recursive: true });
+        await git.clone({
+          fs,
+          http: gitHttp,
+          dir: cacheDir,
+          url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+          onAuth: () => ({ username: gToken }),
+          singleBranch: true,
+          depth: 1
+        });
+      }
+    }
 
     for (const f of files) {
       const filePath = path.join(repoQueueDir, f);
       const postData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-      const destPostPath = path.join(tempDir, 'src', 'content', 'blog', postData.fileName);
+      const destPostPath = path.join(cacheDir, 'src', 'content', 'blog', postData.fileName);
       fs.mkdirSync(path.dirname(destPostPath), { recursive: true });
       fs.writeFileSync(destPostPath, postData.content, 'utf8');
 
       if (postData.imageName) {
         const srcImgPath = path.join(repoImagesQueueDir, postData.imageName);
         if (fs.existsSync(srcImgPath)) {
-          const destImgPath = path.join(tempDir, 'public', postData.imageName);
+          const destImgPath = path.join(cacheDir, 'public', postData.imageName);
           fs.mkdirSync(path.dirname(destImgPath), { recursive: true });
           fs.copyFileSync(srcImgPath, destImgPath);
         }
       }
     }
 
-    await git.add({ fs, dir: tempDir, filepath: '.' });
+    await git.add({ fs, dir: cacheDir, filepath: '.' });
     await git.commit({
       fs,
-      dir: tempDir,
+      dir: cacheDir,
       author: {
         name: 'Gerador Ninja Consolidador',
         email: 'ninja@geradorninja.com'
@@ -1366,7 +1403,7 @@ async function consolidateRepoQueue(repoName) {
     await git.push({
       fs,
       http: gitHttp,
-      dir: tempDir,
+      dir: cacheDir,
       url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
       onAuth: () => ({ username: gToken }),
       ref: 'main'
@@ -1378,12 +1415,6 @@ async function consolidateRepoQueue(repoName) {
   } catch (err) {
     console.error(`Erro durante a consolidação de ${repoName}:`, err);
     throw err;
-  } finally {
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch (rmErr) {
-      console.warn('Não foi possível remover a pasta temporária de consolidação:', rmErr.message);
-    }
   }
 }
 
