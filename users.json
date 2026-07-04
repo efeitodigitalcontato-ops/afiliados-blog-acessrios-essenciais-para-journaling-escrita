@@ -5,8 +5,8 @@
     "password": "226f648b1dca1d4c4182da4de6065ec00614a231067d1b926f7fa75cdcd595d6",
     "approved": true,
     "createdAt": "2026-07-02T14:36:38.616Z",
-    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
-    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA",
+    "vercelToken": "enc:dmNwXzBDM0tmV3pQSHdBQWViQkw2eVZtREZmZkFnZ1RqSEFySDBLdnJ5UjQ5T0RXbFdLeDRUM1NoUXJl",
+    "vercelTeamId": "team_Wd4A9CtlI7gAntKGdcxvaG2N",
     "geminiApiKey": "enc:QVEuQWI4Uk42SU80NnJVaWJtWllVR01JeGx2V2dFYUo4N2thdmp1NEdpdFBLTHRLbng2a2c=",
     "sites": [
       {
@@ -257,8 +257,8 @@
       }
     ],
     "geminiApiKey": "enc:QVEuQWI4Uk42SWxoNHNjN3hQbDBJVDhpMDgzMml0RjdZQWhQTnBSN2VXVGJveU8tNDJlWnc=",
-    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
-    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA",
+    "vercelToken": "enc:dmNwXzBDM0tmV3pQSHdBQWViQkw2eVZtREZmZkFnZ1RqSEFySDBLdnJ5UjQ5T0RXbFdLeDRUM1NoUXJl",
+    "vercelTeamId": "team_Wd4A9CtlI7gAntKGdcxvaG2N",
     "twoFactorEnabled": true,
     "twoFactorSecret": "VRF22K4GM25GCJDH",
     "githubToken": ""
@@ -290,7 +290,7 @@
       }
     ],
     "geminiApiKey": "enc:QVEuQWI4Uk42SU80NnJVaWJtWllVR01JeGx2V2dFYUo4N2thdmp1NEdpdFBLTHRLbng2a2c=",
-    "vercelToken": "enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl",
-    "vercelTeamId": "team_dJkqt4BHUTS397ys5fshKFIA"
+    "vercelToken": "enc:dmNwXzBDM0tmV3pQSHdBQWViQkw2eVZtREZmZkFnZ1RqSEFySDBLdnJ5UjQ5T0RXbFdLeDRUM1NoUXJl",
+    "vercelTeamId": "team_Wd4A9CtlI7gAntKGdcxvaG2N"
   }
 ]
