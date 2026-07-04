@@ -1394,7 +1394,7 @@ async function consolidateRepoQueue(repoName) {
   }
 
   let gToken = DEFAULT_GITHUB_TOKEN;
-  let userEmail = 'rannet10@gmail.com';
+  let userEmail = 'efeitodigitalcontato@gmail.com';
   if (fs.existsSync(configFile)) {
     try {
       const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
