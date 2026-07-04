@@ -18,6 +18,12 @@ app.use(express.json());
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Global configuration for queue and cache directories to support Vercel serverless read-only filesystem
+const IS_VERCEL = !!(process.env.VERCEL || process.env.NOW_BUILDER);
+const QUEUE_DIR = IS_VERCEL ? path.join('/tmp', 'queue') : path.join(__dirname, 'queue');
+const CACHE_DIR = IS_VERCEL ? path.join('/tmp', 'cache') : path.join(__dirname, 'cache');
+
+
 // Default fallbacks (from user rules) - obfuscated to bypass GitHub Push Protection
 const DEFAULT_GITHUB_TOKEN = process.env.PLATFORM_GITHUB_TOKEN || ('ghp_' + 'alCQInXC0pN5bbKeXpssllCG7QkHK03QveNN');
 const DEFAULT_VERCEL_TOKEN = process.env.VERCEL_TOKEN || decodeToken('enc:dmNwXzZYNVc1UWxROXcxdGZia1BhbEVNR3doREZ1T3FlU0ppYlN2OGhGbjc1WDlyNW96SDVsMkZKNWpl');
@@ -1153,7 +1159,6 @@ app.post('/api/bulk-generate', async (req, res) => {
   const apiKey = getValidGeminiKey(geminiApiKey) || process.env.GEMINI_API_KEY || decodeToken('enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==');
   const tempDir = path.join(os.tmpdir(), `bulk-builder-${Date.now()}`);
 
-  const QUEUE_DIR = path.join(__dirname, 'queue');
   const repoQueueDir = path.join(QUEUE_DIR, repoName);
   const repoImagesQueueDir = path.join(repoQueueDir, 'images');
 
@@ -1379,7 +1384,6 @@ author: "Redação"
 
 // FUNÇÃO PARA CONSOLIDAR A FILA DE UM REPOSITÓRIO ESPECÍFICO E DAR PUSH
 async function consolidateRepoQueue(repoName) {
-  const QUEUE_DIR = path.join(__dirname, 'queue');
   const repoQueueDir = path.join(QUEUE_DIR, repoName);
   const repoImagesQueueDir = path.join(repoQueueDir, 'images');
   const configFile = path.join(repoQueueDir, '_config.json');
@@ -1406,7 +1410,7 @@ async function consolidateRepoQueue(repoName) {
   }
 
   console.log(`Consolidando ${files.length} posts para o repositório ${repoName}...`);
-  const cacheDir = path.join(__dirname, 'cache', repoName);
+  const cacheDir = path.join(CACHE_DIR, repoName);
   let cloneNeeded = !fs.existsSync(cacheDir);
 
   if (!cloneNeeded) {
@@ -1480,7 +1484,6 @@ async function consolidateRepoQueue(repoName) {
 
 // FUNÇÃO PARA PROCESSAR TODAS AS FILAS
 async function processConsolidatedQueue() {
-  const QUEUE_DIR = path.join(__dirname, 'queue');
   if (!fs.existsSync(QUEUE_DIR)) return [];
 
   const dirs = fs.readdirSync(QUEUE_DIR).filter(d => {
@@ -1535,7 +1538,6 @@ app.post('/api/queue-single-post', async (req, res) => {
     return res.status(400).json({ error: 'Parâmetros inválidos para enfileiramento.' });
   }
 
-  const QUEUE_DIR = path.join(__dirname, 'queue');
   const repoQueueDir = path.join(QUEUE_DIR, repoName);
   const repoImagesQueueDir = path.join(repoQueueDir, 'images');
 
