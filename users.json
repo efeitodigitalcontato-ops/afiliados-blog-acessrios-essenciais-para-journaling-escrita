@@ -256,7 +256,7 @@
         "lastSeoDate": "2026-07-03T16:49:26.325Z"
       }
     ],
-    "geminiApiKey": "enc:QVEuQWI4Uk42STkxSUxLOXRsazBQLVJpSE5fcDFIT0l6V2FKQ2kwUndzaDBQVHRORGRFaGc=",
+    "geminiApiKey": "",
     "vercelToken": "enc:dmNwXzBDM0tmV3pQSHdBQWViQkw2eVZtREZmZkFnZ1RqSEFySDBLdnJ5UjQ5T0RXbFdLeDRUM1NoUXJl",
     "vercelTeamId": "team_Wd4A9CtlI7gAntKGdcxvaG2N",
     "twoFactorEnabled": true,
