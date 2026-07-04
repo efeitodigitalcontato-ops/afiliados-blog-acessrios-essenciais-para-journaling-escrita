@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import ProductReviewCard from '../components/ProductReviewCard.astro';
 import { getCollection } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -13,6 +15,7 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await post.render();
+
 
 const hasProducts = post.data.reviewedProducts && post.data.reviewedProducts.length > 0;
 
@@ -44,10 +47,50 @@ const recommendedProducts = [
     priceRange: 'R$ 1.400 - R$ 1.800'
   }
 ];
+
+// LOGICA SILO
+let silo = null;
+let categoryInfo = null;
+let subcategoryInfo = null;
+let relatedSiloPosts = [];
+
+try {
+  const siloPath = path.resolve('./src/data/silo.json');
+  if (fs.existsSync(siloPath)) {
+    silo = JSON.parse(fs.readFileSync(siloPath, 'utf-8'));
+    for (const cat of silo.categories || []) {
+      for (const subcat of cat.subcategories || []) {
+        const found = (subcat.articles || []).find(art => art.slug === post.slug);
+        if (found) {
+          categoryInfo = { name: cat.name, slug: cat.slug };
+          subcategoryInfo = { name: subcat.name, slug: subcat.slug };
+          relatedSiloPosts = (subcat.articles || []).filter(art => art.slug !== post.slug);
+          break;
+        }
+      }
+      if (categoryInfo) break;
+    }
+  }
+} catch (e) {
+  console.error("Error reading silo config:", e);
+}
 ---
 
 <Layout title={`${post.data.title} | Melhores Colchões`} description={post.data.description} preloadImage={post.data.heroImage}>
   <article class="blog-post">
+    <!-- Breadcrumbs SILO -->
+    {categoryInfo && subcategoryInfo && (
+      <nav class="silo-breadcrumbs" style="margin-bottom: 2rem; font-size: 0.95rem; color: #475569; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="/" style="color: #6366f1; text-decoration: none; font-weight: 500;">Home</a>
+        <span style="color: #94a3b8;">&gt;</span>
+        <a href={`/categoria/${categoryInfo.slug}`} style="color: #6366f1; text-decoration: none; font-weight: 500;">{categoryInfo.name}</a>
+        <span style="color: #94a3b8;">&gt;</span>
+        <a href={`/subcategoria/${subcategoryInfo.slug}`} style="color: #6366f1; text-decoration: none; font-weight: 500;">{subcategoryInfo.name}</a>
+        <span style="color: #94a3b8;">&gt;</span>
+        <span style="color: #64748b;">{post.data.title}</span>
+      </nav>
+    )}
+
     <!-- Categoria -->
     {post.data.category && (
       <span class="post-cat-badge">{post.data.category}</span>
@@ -210,6 +253,27 @@ const recommendedProducts = [
             Ver Preço Aqui
           </a>
         </div>
+      </div>
+    )}
+    <!-- Navegacao Silo -->
+    {categoryInfo && subcategoryInfo && (
+      <div class="silo-internal-links" style="margin-top: 3rem; padding: 2rem; border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; background: rgba(0,0,0,0.02); text-align: left;">
+        <h3 style="margin-top: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-main, #0f172a);">Navegação Otimizada (Estrutura SILO)</h3>
+        <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #475569); margin-bottom: 1.25rem;">
+          Este artigo faz parte do Hub de Conteúdo <strong><a href={`/categoria/${categoryInfo.slug}`} style="color: #6366f1; text-decoration: underline;">{categoryInfo.name}</a></strong> na subcategoria <strong><a href={`/subcategoria/${subcategoryInfo.slug}`} style="color: #6366f1; text-decoration: underline;">{subcategoryInfo.name}</a></strong>.
+        </p>
+        {relatedSiloPosts.length > 0 && (
+          <div style="margin-top: 1rem;">
+            <h4 style="font-size: 1rem; font-weight: 600; color: var(--text-main, #0f172a); margin-bottom: 0.5rem;">Leia também outras avaliações recomendadas:</h4>
+            <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.8; color: #6366f1; list-style-type: disc;">
+              {relatedSiloPosts.map(art => (
+                <li>
+                  <a href={`/${art.slug}`} style="color: #6366f1; text-decoration: none; font-weight: 500; hover: underline;">{art.title}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     )}
   </article>
