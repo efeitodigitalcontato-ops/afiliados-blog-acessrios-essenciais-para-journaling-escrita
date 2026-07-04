@@ -48,6 +48,8 @@ function getValidGeminiKey(userKey) {
 }
 
 
+const crypto = require('crypto');
+
 // Helper function for HTTPS requests
 function apiRequest(options, bodyData = null) {
   return new Promise((resolve, reject) => {
@@ -70,11 +72,119 @@ function apiRequest(options, bodyData = null) {
     });
     req.on('error', (e) => reject(e));
     if (bodyData) {
-      req.write(JSON.stringify(bodyData));
+      if (typeof bodyData === 'string') {
+        req.write(bodyData);
+      } else {
+        req.write(JSON.stringify(bodyData));
+      }
     }
     req.end();
   });
 }
+
+let cachedGcpToken = null;
+let cachedGcpTokenExpiry = 0;
+
+async function getGCPAccessToken() {
+  if (cachedGcpToken && Date.now() < cachedGcpTokenExpiry - 60000) {
+    return cachedGcpToken;
+  }
+
+  const keyJsonStr = process.env.GCP_SERVICE_ACCOUNT_KEY;
+  if (!keyJsonStr) {
+    throw new Error('GCP_SERVICE_ACCOUNT_KEY is not defined.');
+  }
+
+  const key = JSON.parse(keyJsonStr);
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = now + 3600;
+
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT'
+  };
+
+  const claimSet = {
+    iss: key.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: key.token_uri,
+    exp: expiry,
+    iat: now
+  };
+
+  const base64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
+  const base64ClaimSet = Buffer.from(JSON.stringify(claimSet)).toString('base64url');
+  const signatureInput = `${base64Header}.${base64ClaimSet}`;
+
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(signatureInput);
+  const signature = sign.sign(key.private_key, 'base64url');
+
+  const assertion = `${signatureInput}.${signature}`;
+  const tokenUrl = new URL(key.token_uri);
+  const body = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${assertion}`;
+
+  const tokenRes = await apiRequest({
+    hostname: tokenUrl.hostname,
+    port: 443,
+    path: tokenUrl.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  }, body);
+
+  if (tokenRes.statusCode !== 200) {
+    throw new Error(`Failed to exchange JWT for GCP Token: ${JSON.stringify(tokenRes.body)}`);
+  }
+
+  cachedGcpToken = tokenRes.body.access_token;
+  cachedGcpTokenExpiry = Date.now() + (tokenRes.body.expires_in * 1000);
+  return cachedGcpToken;
+}
+
+// Universal function to call Gemini API via Vertex AI or AI Studio
+async function callGeminiAPI(bodyData, userApiKey = null) {
+  if (process.env.GCP_SERVICE_ACCOUNT_KEY) {
+    // 1. Google Cloud Vertex AI path
+    try {
+      const gcpToken = await getGCPAccessToken();
+      const projectId = process.env.GCP_PROJECT_ID || 'project-ef53eded-b4ac-4a33-b75';
+      const location = process.env.GCP_LOCATION || 'us-central1';
+      
+      const apiRes = await apiRequest({
+        hostname: `${location}-aiplatform.googleapis.com`,
+        port: 443,
+        path: `/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-1.5-flash:generateContent`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${gcpToken}`,
+          'Content-Type': 'application/json'
+        }
+      }, bodyData);
+
+      if (apiRes.statusCode === 200 && apiRes.body) {
+        return apiRes;
+      }
+      console.warn('Vertex AI API failed, status:', apiRes.statusCode, apiRes.body);
+    } catch (e) {
+      console.error('Error in Vertex AI call:', e.message);
+    }
+  }
+
+  // 2. AI Studio Fallback
+  const apiKey = getValidGeminiKey(userApiKey) || process.env.GEMINI_API_KEY || decodeToken('enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==');
+  return await apiRequest({
+    hostname: 'generativelanguage.googleapis.com',
+    port: 443,
+    path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }, bodyData);
+}
+
 
 function downloadImage(url, destPath) {
   return new Promise((resolve, reject) => {
@@ -541,19 +651,11 @@ author: "Redação Gerador Ninja"
 
 Corpo do artigo em HTML limpo. Use tags <h2>, <h3>, <p>, <ul>, <li> para estruturar. NUNCA use marcadores de blocos de código como \`\`\`markdown ou \`\`\`html no início ou final do texto.`;
 
-        const apiRes = await apiRequest({
-          hostname: 'generativelanguage.googleapis.com',
-          port: 443,
-          path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }, {
+        const apiRes = await callGeminiAPI({
           contents: [{
             parts: [{ text: prompt }]
           }]
-        });
+        }, req.body.geminiKey);
 
         if (apiRes.statusCode === 200 && apiRes.body && apiRes.body.candidates && apiRes.body.candidates[0].content.parts[0].text) {
           let rawText = apiRes.body.candidates[0].content.parts[0].text.trim();
@@ -988,15 +1090,7 @@ O resultado DEVE ser estritamente um array JSON válido de objetos, onde cada ob
 
 Retorne APENAS o JSON bruto. Não inclua wraps de marcação de bloco de código como \`\`\`json ou \`\`\` no início ou final do texto.`;
 
-    const apiRes = await apiRequest({
-      hostname: 'generativelanguage.googleapis.com',
-      port: 443,
-      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }, {
+    const apiRes = await callGeminiAPI({
       contents: [{
         parts: [{ text: prompt }]
       }],
@@ -1006,7 +1100,7 @@ Retorne APENAS o JSON bruto. Não inclua wraps de marcação de bloco de código
       generationConfig: {
         temperature: 0.85
       }
-    });
+    }, geminiApiKey);
 
     if (apiRes.statusCode === 200 && apiRes.body && apiRes.body.candidates && apiRes.body.candidates[0].content.parts[0].text) {
       let rawText = apiRes.body.candidates[0].content.parts[0].text.trim();
@@ -1129,19 +1223,11 @@ Se o link de afiliado for diferente de '#', garanta que o link de afiliado "${af
 
 NUNCA use marcadores de bloco de código de IA como \`\`\`markdown ou \`\`\`html no início ou final do texto. Comece diretamente com as linhas delimitadoras '---'.`;
 
-        const apiRes = await apiRequest({
-          hostname: 'generativelanguage.googleapis.com',
-          port: 443,
-          path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }, {
+        const apiRes = await callGeminiAPI({
           contents: [{
             parts: [{ text: prompt }]
           }]
-        });
+        }, geminiApiKey);
 
         console.log(`Gemini response status for "${post.title}":`, apiRes.statusCode);
         if (apiRes.statusCode === 200 && apiRes.body && apiRes.body.candidates && apiRes.body.candidates[0].content.parts[0].text) {
@@ -1331,43 +1417,23 @@ async function consolidateRepoQueue(repoName) {
   }
 
   try {
+    const runGit = (cmd, dir) => {
+      return execSync(cmd, { cwd: dir, stdio: 'pipe', encoding: 'utf8' });
+    };
+
     if (cloneNeeded) {
       fs.mkdirSync(cacheDir, { recursive: true });
-      console.log(`Clonando repositório ${repoName} para cache...`);
-      await git.clone({
-        fs,
-        http: gitHttp,
-        dir: cacheDir,
-        url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-        onAuth: () => ({ username: gToken }),
-        singleBranch: true,
-        depth: 1
-      });
+      console.log(`Clonando repositório ${repoName} para cache via Git nativo...`);
+      runGit(`git clone --depth 1 https://${gToken}@github.com/${DEFAULT_ORG}/${repoName}.git .`, cacheDir);
     } else {
-      console.log(`Atualizando repositório ${repoName} em cache...`);
+      console.log(`Atualizando repositório ${repoName} em cache via Git nativo...`);
       try {
-        await git.pull({
-          fs,
-          http: gitHttp,
-          dir: cacheDir,
-          url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-          onAuth: () => ({ username: gToken }),
-          singleBranch: true,
-          fastForwardOnly: true
-        });
+        runGit(`git pull origin main`, cacheDir);
       } catch (pullErr) {
-        console.warn(`Falha ao atualizar o cache de ${repoName}. Reclonando...`, pullErr.message);
+        console.warn(`Falha ao dar git pull no cache de ${repoName}. Reclonando...`, pullErr.message);
         fs.rmSync(cacheDir, { recursive: true, force: true });
         fs.mkdirSync(cacheDir, { recursive: true });
-        await git.clone({
-          fs,
-          http: gitHttp,
-          dir: cacheDir,
-          url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-          onAuth: () => ({ username: gToken }),
-          singleBranch: true,
-          depth: 1
-        });
+        runGit(`git clone --depth 1 https://${gToken}@github.com/${DEFAULT_ORG}/${repoName}.git .`, cacheDir);
       }
     }
 
@@ -1389,32 +1455,26 @@ async function consolidateRepoQueue(repoName) {
       }
     }
 
-    await git.add({ fs, dir: cacheDir, filepath: '.' });
-    await git.commit({
-      fs,
-      dir: cacheDir,
-      author: {
-        name: 'Gerador Ninja Consolidador',
-        email: 'ninja@geradorninja.com'
-      },
-      message: `feat: publicacao consolidada diaria de ${files.length} posts`
-    });
+    // Configura e envia via Git nativo
+    runGit(`git add .`, cacheDir);
+    runGit(`git config user.name "Gerador Ninja"`, cacheDir);
+    runGit(`git config user.email "ninja@geradorninja.com"`, cacheDir);
+    
+    try {
+      runGit(`git commit -m "feat: publicacao consolidada diaria de ${files.length} posts"`, cacheDir);
+    } catch (cErr) {
+      if (!cErr.message.includes('nothing to commit')) throw cErr;
+    }
 
-    await git.push({
-      fs,
-      http: gitHttp,
-      dir: cacheDir,
-      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-      onAuth: () => ({ username: gToken }),
-      ref: 'main'
-    });
+    console.log(`Enviando commits para o GitHub via Git nativo...`);
+    runGit(`git push origin main`, cacheDir);
 
     console.log(`Push consolidado concluído com sucesso para ${repoName}!`);
     fs.rmSync(repoQueueDir, { recursive: true, force: true });
     return { success: true, count: files.length };
   } catch (err) {
-    console.error(`Erro durante a consolidação de ${repoName}:`, err);
-    throw err;
+    console.error(`Erro durante a consolidação de ${repoName}:`, err.stderr || err.message);
+    throw new Error(err.stderr || err.message);
   }
 }
 
@@ -2588,13 +2648,7 @@ Responda APENAS o JSON válido no formato abaixo:
   "seoAdvice": ["Melhore o link building", "Otimize title tags", "Crie mais interações"]
 }`;
 
-      const geminiRes = await apiRequest({
-        hostname: 'generativelanguage.googleapis.com',
-        port: 443,
-        path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }, {
+      const geminiRes = await callGeminiAPI({
         contents: [{
           parts: [{ text: prompt }]
         }],
@@ -2604,7 +2658,7 @@ Responda APENAS o JSON válido no formato abaixo:
         generationConfig: {
           responseMimeType: "application/json"
         }
-      });
+      }, geminiApiKey);
 
       if (geminiRes.statusCode === 200 && geminiRes.body && geminiRes.body.candidates && geminiRes.body.candidates[0].content.parts[0].text) {
         let aiText = geminiRes.body.candidates[0].content.parts[0].text.trim();
