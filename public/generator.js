@@ -450,20 +450,18 @@ async function publishArticle() {
   const randomSuffix = Math.floor(100 + Math.random() * 900);
   const fileName = `src/content/blog/${cleanSlug}-${randomSuffix}.md`;
 
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${fileName}`;
-  const base64Content = btoa(unescape(encodeURIComponent(generatedMarkdown)));
-
   try {
-    const response = await fetch(url, {
-      method: "PUT",
+    const response = await fetch('/api/queue-single-post', {
+      method: "POST",
       headers: {
-        "Authorization": `token ${githubToken}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        message: `Publicado via Gerador Ninja: ${rawTitle}`,
-        content: base64Content,
-        branch: "main"
+        repoName: repoName,
+        fileName: fileName,
+        content: generatedMarkdown,
+        githubToken: githubToken,
+        userEmail: localStorage.getItem("user_email") || ""
       })
     });
 
@@ -473,11 +471,11 @@ async function publishArticle() {
     }
 
     document.getElementById("success-overlay").style.display = "flex";
-    showToast("Artigo publicado com sucesso!", "success");
+    showToast("Artigo salvo na fila com sucesso!", "success");
 
   } catch (err) {
     console.error(err);
-    showToast("Falha ao publicar no GitHub: " + err.message, "error");
+    showToast("Falha ao salvar na fila local: " + err.message, "error");
     publishBtn.disabled = false;
     publishBtn.textContent = "🚀 Publicar Diretamente no Site";
   }
@@ -702,16 +700,17 @@ Apenas retorne o frontmatter YAML e o corpo do artigo. Não acrescente explicaç
     const base64Content = btoa(unescape(encodeURIComponent(articleMarkdown)));
 
     try {
-      const pubResponse = await fetch(url, {
-        method: "PUT",
+      const pubResponse = await fetch('/api/queue-single-post', {
+        method: "POST",
         headers: {
-          "Authorization": `token ${githubToken}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          message: `Publicado em lote via Gerador Ninja: ${rawTitle}`,
-          content: base64Content,
-          branch: "main"
+          repoName: repoName,
+          fileName: fileName,
+          content: articleMarkdown,
+          githubToken: githubToken,
+          userEmail: localStorage.getItem("user_email") || ""
         })
       });
 
@@ -721,12 +720,12 @@ Apenas retorne o frontmatter YAML e o corpo do artigo. Não acrescente explicaç
       }
 
       logPub.style.color = "var(--success)";
-      logPub.textContent = `✓ [${currentNum}/${totalNum}] Artigo publicado no site!`;
+      logPub.textContent = `✓ [${currentNum}/${totalNum}] Artigo salvo na fila local!`;
 
     } catch (err) {
       console.error(err);
       logPub.style.color = "var(--danger)";
-      logPub.textContent = `❌ [${currentNum}/${totalNum}] Erro ao publicar "${title}": ${err.message}`;
+      logPub.textContent = `❌ [${currentNum}/${totalNum}] Erro ao enfileirar "${title}": ${err.message}`;
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));

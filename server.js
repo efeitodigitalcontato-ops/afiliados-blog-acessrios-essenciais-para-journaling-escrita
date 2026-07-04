@@ -1437,6 +1437,50 @@ app.post('/api/consolidate-queue', async (req, res) => {
   }
 });
 
+// ROTA PARA SALVAR UM ARTIGO INDIVIDUAL NA FILA LOCAL
+app.post('/api/queue-single-post', async (req, res) => {
+  const { repoName, fileName, content, imageName, fileData, githubToken, userEmail } = req.body;
+  if (!repoName || !fileName || !content) {
+    return res.status(400).json({ error: 'Parâmetros inválidos para enfileiramento.' });
+  }
+
+  const QUEUE_DIR = path.join(__dirname, 'queue');
+  const repoQueueDir = path.join(QUEUE_DIR, repoName);
+  const repoImagesQueueDir = path.join(repoQueueDir, 'images');
+
+  try {
+    fs.mkdirSync(repoQueueDir, { recursive: true });
+    fs.mkdirSync(repoImagesQueueDir, { recursive: true });
+
+    // Salva config do repositório
+    const gToken = githubToken || DEFAULT_GITHUB_TOKEN;
+    fs.writeFileSync(path.join(repoQueueDir, '_config.json'), JSON.stringify({ githubToken: gToken, userEmail }, null, 2), 'utf8');
+
+    // Salva imagem manual se houver upload
+    if (fileData && imageName) {
+      const imageBuffer = Buffer.from(fileData, 'base64');
+      const imgPath = path.join(repoImagesQueueDir, imageName);
+      fs.writeFileSync(imgPath, imageBuffer);
+    }
+
+    const slug = path.basename(fileName, '.md');
+    const queueMetadata = {
+      fileName,
+      content,
+      imageName: imageName || null,
+      title: slug.replace(/-/g, ' '),
+      userEmail
+    };
+
+    fs.writeFileSync(path.join(repoQueueDir, `${slug}.json`), JSON.stringify(queueMetadata, null, 2), 'utf8');
+    console.log(`Artigo enfileirado com sucesso localmente para ${repoName}: ${fileName}`);
+    res.json({ success: true, message: 'Artigo salvo na fila de consolidação local!' });
+  } catch (err) {
+    console.error('Erro ao enfileirar artigo individual:', err);
+    res.status(500).json({ error: 'Erro ao salvar na fila local', details: err.message });
+  }
+});
+
 // Helper sluggify function inside server
 function sluggify(text) {
   return text.toLowerCase()
