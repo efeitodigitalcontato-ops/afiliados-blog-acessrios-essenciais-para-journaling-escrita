@@ -1390,21 +1390,26 @@ async function consolidateRepoQueue(repoName) {
 // FUNÇÃO PARA PROCESSAR TODAS AS FILAS
 async function processConsolidatedQueue() {
   const QUEUE_DIR = path.join(__dirname, 'queue');
-  if (!fs.existsSync(QUEUE_DIR)) return;
+  if (!fs.existsSync(QUEUE_DIR)) return [];
 
   const dirs = fs.readdirSync(QUEUE_DIR).filter(d => {
     return fs.statSync(path.join(QUEUE_DIR, d)).isDirectory();
   });
 
+  const processed = [];
   console.log(`[Scheduler] Iniciando verificação de fila para ${dirs.length} blogs...`);
   for (const repoName of dirs) {
     try {
-      await consolidateRepoQueue(repoName);
+      const res = await consolidateRepoQueue(repoName);
+      if (res && res.success) {
+        processed.push({ repoName, count: res.count });
+      }
     } catch (err) {
       console.error(`[Scheduler] Erro ao consolidar fila para ${repoName}:`, err.message);
     }
   }
   console.log(`[Scheduler] Processamento da fila concluído.`);
+  return processed;
 }
 
 // ROTA PARA EXECUTAR A CONSOLIDAÇÃO MANUALMENTE (PARA TESTES OU EXECUÇÃO FORÇADA)
@@ -1413,10 +1418,18 @@ app.post('/api/consolidate-queue', async (req, res) => {
   try {
     if (repoName) {
       const result = await consolidateRepoQueue(repoName);
-      return res.json({ success: true, message: `Consolidação concluída para ${repoName}`, result });
+      if (result && result.success) {
+        return res.json({ success: true, message: `Consolidação concluída para ${repoName}`, result });
+      } else {
+        return res.json({ success: false, message: `Fila vazia ou sem artigos para ${repoName}`, result });
+      }
     } else {
-      await processConsolidatedQueue();
-      return res.json({ success: true, message: 'Consolidação concluída para todas as filas' });
+      const result = await processConsolidatedQueue();
+      if (result.length > 0) {
+        return res.json({ success: true, message: 'Consolidação concluída para todas as filas', result });
+      } else {
+        return res.json({ success: false, message: 'Fila de consolidação vazia. Nenhum artigo pendente encontrado.' });
+      }
     }
   } catch (err) {
     console.error('Erro na consolidação manual:', err);
