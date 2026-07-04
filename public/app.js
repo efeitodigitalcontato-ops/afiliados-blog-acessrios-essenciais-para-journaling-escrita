@@ -27,10 +27,14 @@ const el = {
     auth: document.getElementById('view-auth'),
     dashboard: document.getElementById('view-dashboard'),
     newSite: document.getElementById('view-new-site'),
+    niche: document.getElementById('view-niche'),
     multiGenerator: document.getElementById('view-multi-generator'),
     sitePosition: document.getElementById('view-site-position'),
+    backlinkTracker: document.getElementById('view-backlink-tracker'),
+    siloStructure: document.getElementById('view-silo-structure'),
     settings: document.getElementById('view-settings'),
-    domainConfig: document.getElementById('view-domain-config')
+    domainConfig: document.getElementById('view-domain-config'),
+    netoSalva: document.getElementById('view-neto-salva')
   },
 
   // Auth
@@ -132,6 +136,23 @@ function showView(viewName) {
 
   if (viewName === 'sitePosition') {
     populatePositionSites();
+  }
+
+  if (viewName === 'backlinkTracker') {
+    populateBacklinkSites();
+    renderSavedBacklinks();
+  }
+
+  if (viewName === 'siloStructure') {
+    populateSiloSites();
+  }
+
+  if (viewName === 'netoSalva') {
+    populateBackupSites();
+  }
+
+  if (viewName === 'niche') {
+    initNicheSelector();
   }
 
   // Smooth scroll to top on change
@@ -260,14 +281,21 @@ function init() {
 
 // Update UI based on auth state
 function updateAuthUI(isLoggedIn) {
+  const safiraTrigger = document.getElementById('safira-floating-trigger');
+  const comeceTrigger = document.getElementById('comece-rapido-trigger');
   if (isLoggedIn) {
     el.navLinksPrivate.forEach(link => link.classList.remove('hidden'));
     el.navLinksPublic.forEach(link => link.classList.add('hidden'));
     el.userDisplayEmail.textContent = State.user.email;
     el.dashUserName.textContent = State.user.name || 'Empreendedor';
+    if (safiraTrigger) safiraTrigger.classList.remove('hidden');
+    if (comeceTrigger) comeceTrigger.classList.remove('hidden');
   } else {
     el.navLinksPrivate.forEach(link => link.classList.add('hidden'));
     el.navLinksPublic.forEach(link => link.classList.remove('hidden'));
+    if (safiraTrigger) safiraTrigger.classList.add('hidden');
+    if (comeceTrigger) comeceTrigger.classList.add('hidden');
+    if (typeof closeSafiraChat === 'function') closeSafiraChat();
   }
 }
 
@@ -377,9 +405,13 @@ setTimeout(() => {
 // View Routing clicks
 el.navLogo.addEventListener('click', () => showView(State.user ? 'dashboard' : 'landing'));
 document.querySelector('a[href="#dashboard"]').addEventListener('click', (e) => { e.preventDefault(); showView('dashboard'); });
+document.querySelector('a[href="#niche"]').addEventListener('click', (e) => { e.preventDefault(); showView('niche'); });
 document.querySelector('a[href="#new-site"]').addEventListener('click', (e) => { e.preventDefault(); showView('newSite'); });
 document.querySelector('a[href="#multi-generator"]').addEventListener('click', (e) => { e.preventDefault(); showView('multiGenerator'); });
+document.querySelector('a[href="#silo-structure"]').addEventListener('click', (e) => { e.preventDefault(); showView('siloStructure'); });
 document.querySelector('a[href="#site-position"]').addEventListener('click', (e) => { e.preventDefault(); showView('sitePosition'); });
+document.querySelector('a[href="#backlink-tracker"]').addEventListener('click', (e) => { e.preventDefault(); showView('backlinkTracker'); });
+document.querySelector('a[href="#neto-salva"]').addEventListener('click', (e) => { e.preventDefault(); showView('netoSalva'); });
 document.querySelector('a[href="#settings"]').addEventListener('click', (e) => { e.preventDefault(); showView('settings'); });
 
 el.loginNavBtn.addEventListener('click', () => { showView('auth'); el.tabLoginBtn.click(); });
@@ -1409,6 +1441,463 @@ if (positionTrackerForm) {
   });
 }
 
+// ==========================================
+// LÓGICA DO ARQUITETO SILO
+// ==========================================
+
+function populateSiloSites() {
+  const select = document.getElementById('silo-select-site');
+  if (!select) return;
+  
+  if (State.sites.length === 0) {
+    select.innerHTML = '<option value="">Crie um blog primeiro na aba "Criar Blog"</option>';
+    return;
+  }
+  
+  select.innerHTML = '';
+  State.sites.forEach(site => {
+    const opt = document.createElement('option');
+    opt.value = site.repoName;
+    opt.textContent = `${site.repoName} (${site.theme})`;
+    select.appendChild(opt);
+  });
+}
+
+const siloForm = document.getElementById('silo-structure-form');
+if (siloForm) {
+  siloForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const repoName = document.getElementById('silo-select-site').value;
+    const niche = document.getElementById('silo-niche').value.trim();
+    
+    if (!repoName || !niche) {
+      showToast('Preencha todos os campos obrigatórios.', 'error');
+      return;
+    }
+    
+    const initialMock = document.getElementById('silo-initial-mock');
+    const loadingMock = document.getElementById('silo-loading-mock');
+    const resultsContainer = document.getElementById('silo-results-container');
+    const treeVisualizer = document.getElementById('silo-tree-visualizer');
+    const analyzeBtn = document.getElementById('btn-analyze-silo');
+    
+    const stepClone = document.getElementById('silo-step-clone');
+    const stepResearch = document.getElementById('silo-step-research');
+    const stepTemplates = document.getElementById('silo-step-templates');
+    const stepPush = document.getElementById('silo-step-push');
+    
+    // Reset steps UI
+    [stepClone, stepResearch, stepTemplates, stepPush].forEach(el => {
+      if (el) {
+        el.style.color = 'var(--text-muted)';
+        el.textContent = el.textContent.replace('✓', '⏳').replace('❌', '⏳');
+      }
+    });
+    
+    if (initialMock) initialMock.classList.add('hidden');
+    if (loadingMock) loadingMock.classList.remove('hidden');
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = '⚡ Processando SILO...';
+    
+    try {
+      // Step 1: Clone
+      if (stepClone) {
+        stepClone.style.color = 'var(--primary)';
+        stepClone.textContent = '⏳ Clonando repositório e analisando artigos...';
+      }
+      
+      const payload = {
+        repoName,
+        niche,
+        githubToken: State.credentials.githubToken || localStorage.getItem('github_token'),
+        geminiApiKey: State.credentials.geminiApiKey || localStorage.getItem('gemini_key'),
+        userEmail: State.user ? State.user.email : null
+      };
+      
+      // We will make a post to our API endpoint
+      // We'll update the steps based on simulated delay or custom server events, but let's let the single request do it.
+      if (stepResearch) {
+        setTimeout(() => {
+          stepClone.style.color = 'var(--success)';
+          stepClone.textContent = '✓ Clonando repositório e analisando artigos concluído.';
+          stepResearch.style.color = 'var(--primary)';
+          stepResearch.textContent = '⏳ Pesquisando palavras cabeça e médias (Gemini)...';
+        }, 3000);
+      }
+      
+      if (stepTemplates) {
+        setTimeout(() => {
+          stepResearch.style.color = 'var(--success)';
+          stepResearch.textContent = '✓ Pesquisando palavras cabeça e médias concluído.';
+          stepTemplates.style.color = 'var(--primary)';
+          stepTemplates.textContent = '⏳ Escrevendo silo.json e novos templates no repositório...';
+        }, 9000);
+      }
+
+      if (stepPush) {
+        setTimeout(() => {
+          stepTemplates.style.color = 'var(--success)';
+          stepTemplates.textContent = '✓ Escrevendo silo.json e novos templates concluído.';
+          stepPush.style.color = 'var(--primary)';
+          stepPush.textContent = '⏳ Enviando atualizações para o GitHub...';
+        }, 13000);
+      }
+
+      const res = await fetch('/api/restructure-silo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao reestruturar blog em SILO.');
+      }
+      
+      // Update steps to done
+      [stepClone, stepResearch, stepTemplates, stepPush].forEach(el => {
+        if (el) {
+          el.style.color = 'var(--success)';
+          el.textContent = el.textContent.replace('⏳', '✓');
+        }
+      });
+      
+      showToast('Estrutura SILO aplicada com sucesso!', 'success');
+      
+      // Render the visual tree
+      if (treeVisualizer && data.silo) {
+        let treeHtml = `<div style="font-weight: bold; color: var(--primary); margin-bottom: 1rem;">🌳 SITE: ${repoName} (Micro-Nicho: ${niche})</div>`;
+        
+        data.silo.categories.forEach(cat => {
+          treeHtml += `<div style="margin-left: 10px; margin-top: 1rem;">📁 CATEGORIA (Head Term): <strong style="color: #fff;">${cat.name}</strong></div>`;
+          treeHtml += `<div style="margin-left: 25px; font-size: 0.85rem; color: var(--text-muted); font-style: italic;">"${cat.description}"</div>`;
+          
+          cat.subcategories.forEach(sub => {
+            treeHtml += `<div style="margin-left: 30px; margin-top: 0.5rem; color: #a855f7;">📂 SUBCATEGORIA (Middle Term): <strong>${sub.name}</strong></div>`;
+            treeHtml += `<div style="margin-left: 45px; font-size: 0.85rem; color: var(--text-muted); font-style: italic;">"${sub.description}"</div>`;
+            
+            sub.articles.forEach(art => {
+              treeHtml += `<div style="margin-left: 60px; color: #10b981;">📄 Artigo (Long-Tail): ${art.title} <span style="color: var(--text-muted); font-size: 0.85rem;">(${art.slug})</span></div>`;
+            });
+          });
+        });
+        
+        treeVisualizer.innerHTML = treeHtml;
+      }
+      
+      if (resultsContainer) resultsContainer.style.display = 'block';
+      
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+      
+      // Mark failed step in red
+      [stepClone, stepResearch, stepTemplates, stepPush].forEach(el => {
+        if (el && el.textContent.includes('⏳')) {
+          el.style.color = '#ef4444';
+          el.textContent = el.textContent.replace('⏳', '❌');
+        }
+      });
+      
+      if (initialMock) initialMock.classList.remove('hidden');
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = '⚡ Planejar e Estruturar SILO';
+      if (loadingMock) loadingMock.classList.add('hidden');
+    }
+  });
+}
+
+// ========================================================
+// LÓGICA DO SISTEMA NETO SALVA (BACKUPS)
+// ========================================================
+
+function populateBackupSites() {
+  const select = document.getElementById('backup-select-site');
+  if (!select) return;
+
+  if (State.sites.length === 0) {
+    select.innerHTML = '<option value="">Crie um blog primeiro na aba "Criar Blog"</option>';
+    document.getElementById('backups-list-container').style.display = 'none';
+    return;
+  }
+
+  select.innerHTML = '';
+  State.sites.forEach(site => {
+    const opt = document.createElement('option');
+    opt.value = site.repoName;
+    opt.textContent = `${site.repoName} (${site.theme})`;
+    select.appendChild(opt);
+  });
+
+  // Attach event listener once if not already done
+  if (!select.dataset.wired) {
+    select.dataset.wired = 'true';
+    select.addEventListener('change', () => {
+      const repoName = select.value;
+      if (repoName) {
+        loadBackups(repoName);
+      }
+    });
+  }
+
+  // Initial load
+  loadBackups(select.value);
+}
+
+async function loadBackups(repoName) {
+  const container = document.getElementById('backups-list-container');
+  const tbody = document.getElementById('backups-tbody');
+  const badge = document.getElementById('backups-count-badge');
+
+  if (!repoName) return;
+
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;"><div class="spinner" style="margin: 0 auto 0.5rem auto;"></div>Carregando backups...</td></tr>';
+  container.style.display = 'block';
+
+  try {
+    const response = await fetch(`/api/neto-salva/backups?repoName=${encodeURIComponent(repoName)}&githubToken=${encodeURIComponent(State.credentials.githubToken)}`);
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao carregar os backups do servidor.');
+    }
+
+    badge.textContent = `${data.backups.length} backup(s) salvo(s)`;
+    tbody.innerHTML = '';
+
+    if (data.backups.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum ponto de restauração encontrado para este blog.</td></tr>';
+      return;
+    }
+
+    data.backups.forEach(backup => {
+      const tr = document.createElement('tr');
+      const backupDate = new Date(backup.date).toLocaleString('pt-BR');
+      const isAuto = backup.isAuto;
+      
+      tr.innerHTML = `
+        <td><strong style="color: var(--text-main);">${backupDate}</strong></td>
+        <td><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; color: var(--primary); font-size: 0.85rem;">${backup.id}</code></td>
+        <td style="color: var(--text-main);">${backup.description}</td>
+        <td>
+          <span class="badge" style="background: ${isAuto ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}; color: ${isAuto ? '#f59e0b' : '#10b981'}; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+            ${isAuto ? 'Automático' : 'Manual'}
+          </span>
+        </td>
+        <td style="text-align: center;">
+          <div style="display: flex; gap: 8px; justify-content: center;">
+            <button class="btn btn-sm btn-primary" onclick="triggerRestore('${repoName}', '${backup.id}')" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;">Restaurar</button>
+            <a class="btn btn-sm btn-outline" href="/api/neto-salva/download?repoName=${encodeURIComponent(repoName)}&tagName=${encodeURIComponent(backup.id)}&githubToken=${encodeURIComponent(State.credentials.githubToken)}" style="border: 1px solid var(--border); color: var(--text);">Baixar ZIP</a>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar backups: ${err.message}</td></tr>`;
+    showToast(err.message, 'error');
+  }
+}
+
+// Global window reference for inline onclick triggers
+window.triggerRestore = async function(repoName, tagName) {
+  const confirmRestore = confirm(`Deseja realmente restaurar o blog para a versão "${tagName}"?\n\nIsso substituirá o estado atual do blog na nuvem. Um backup automático do estado atual será criado antes da restauração para sua segurança.`);
+  if (!confirmRestore) return;
+
+  const initialMock = document.getElementById('backup-initial-mock');
+  const loadingMock = document.getElementById('backup-loading-mock');
+  const loadingTitle = document.getElementById('backup-loading-title');
+  const loadingStatus = document.getElementById('backup-loading-status');
+  const createBtn = document.getElementById('btn-create-backup');
+
+  // Set loading UI
+  if (initialMock) initialMock.classList.add('hidden');
+  if (loadingMock) loadingMock.classList.remove('hidden');
+  if (loadingTitle) loadingTitle.textContent = 'Restaurando Blog...';
+  if (loadingStatus) loadingStatus.textContent = 'Criando backup automático de segurança e aplicando a versão...';
+  if (createBtn) createBtn.disabled = true;
+
+  try {
+    const response = await fetch('/api/neto-salva/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        repoName,
+        tagName,
+        githubToken: State.credentials.githubToken,
+        userEmail: State.user ? State.user.email : null
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao realizar a restauração do backup.');
+    }
+
+    showToast('Blog restaurado com sucesso! O deploy da Vercel foi iniciado na nuvem.', 'success');
+    
+    // Reload backup list to show the new auto safeguard backup
+    await loadBackups(repoName);
+
+  } catch (err) {
+    console.error(err);
+    showToast(err.message, 'error');
+  } finally {
+    if (loadingMock) loadingMock.classList.add('hidden');
+    if (initialMock) initialMock.classList.remove('hidden');
+    if (createBtn) createBtn.disabled = false;
+  }
+};
+
+// Form submit for backup creation
+const netoSalvaForm = document.getElementById('neto-salva-form');
+if (netoSalvaForm) {
+  netoSalvaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const repoName = document.getElementById('backup-select-site').value;
+    const description = document.getElementById('backup-description').value.trim();
+
+    if (!repoName || !description) {
+      showToast('Por favor, preencha todos os campos.', 'error');
+      return;
+    }
+
+    const initialMock = document.getElementById('backup-initial-mock');
+    const loadingMock = document.getElementById('backup-loading-mock');
+    const loadingTitle = document.getElementById('backup-loading-title');
+    const loadingStatus = document.getElementById('backup-loading-status');
+    const createBtn = document.getElementById('btn-create-backup');
+
+    if (initialMock) initialMock.classList.add('hidden');
+    if (loadingMock) loadingMock.classList.remove('hidden');
+    if (loadingTitle) loadingTitle.textContent = 'Criando Backup...';
+    if (loadingStatus) loadingStatus.textContent = 'Clonando repositório e gerando ponto de restauração no GitHub...';
+    if (createBtn) createBtn.disabled = true;
+
+    try {
+      const response = await fetch('/api/neto-salva/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoName,
+          description,
+          githubToken: State.credentials.githubToken,
+          userEmail: State.user ? State.user.email : null
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao gerar o ponto de restauração.');
+      }
+
+      showToast(`Ponto de restauração "${data.tagName}" criado com sucesso!`, 'success');
+      document.getElementById('backup-description').value = '';
+      
+      // Reload backups list
+      await loadBackups(repoName);
+
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+    } finally {
+      if (loadingMock) loadingMock.classList.add('hidden');
+      if (initialMock) initialMock.classList.remove('hidden');
+      if (createBtn) createBtn.disabled = false;
+    }
+  });
+}
+
+// Form submit for backup restore via ZIP upload
+const netoSalvaUploadForm = document.getElementById('neto-salva-upload-form');
+if (netoSalvaUploadForm) {
+  netoSalvaUploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const repoName = document.getElementById('backup-select-site').value;
+    const fileInput = document.getElementById('backup-zip-file');
+    
+    if (!repoName) {
+      showToast('Selecione um blog primeiro.', 'error');
+      return;
+    }
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showToast('Por favor, selecione um arquivo ZIP de backup.', 'error');
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const confirmUpload = confirm(`Deseja realmente restaurar o blog "${repoName}" a partir do arquivo "${file.name}"?\n\nIsso apagará e substituirá o estado atual do blog na nuvem. Um backup automático do estado atual será criado antes da restauração para sua segurança.`);
+    if (!confirmUpload) return;
+
+    const initialMock = document.getElementById('backup-initial-mock');
+    const loadingMock = document.getElementById('backup-loading-mock');
+    const loadingTitle = document.getElementById('backup-loading-title');
+    const loadingStatus = document.getElementById('backup-loading-status');
+    const uploadBtn = document.getElementById('btn-upload-restore');
+
+    if (initialMock) initialMock.classList.add('hidden');
+    if (loadingMock) loadingMock.classList.remove('hidden');
+    if (loadingTitle) loadingTitle.textContent = 'Enviando & Restaurando ZIP...';
+    if (loadingStatus) loadingStatus.textContent = 'Lendo o arquivo compactado e transmitindo para o servidor...';
+    if (uploadBtn) uploadBtn.disabled = true;
+
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      const base64Promise = new Promise((resolve, reject) => {
+        reader.onload = () => {
+          // Extract base64 part of DataURL
+          const base64String = reader.result.split(',')[1];
+          resolve(base64String);
+        };
+        reader.onerror = (error) => reject(error);
+      });
+      reader.readAsDataURL(file);
+      const base64Data = await base64Promise;
+
+      if (loadingStatus) loadingStatus.textContent = 'Extraindo ZIP e atualizando repositório na nuvem (isso pode levar cerca de 1 minuto)...';
+
+      const response = await fetch('/api/neto-salva/restore-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoName,
+          zipData: base64Data,
+          githubToken: State.credentials.githubToken,
+          userEmail: State.user ? State.user.email : null
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao restaurar a partir do ZIP enviado.');
+      }
+
+      showToast('Blog restaurado com sucesso a partir do ZIP! O deploy da Vercel foi iniciado na nuvem.', 'success');
+      fileInput.value = '';
+      
+      // Reload backups list
+      await loadBackups(repoName);
+
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+    } finally {
+      if (loadingMock) loadingMock.classList.add('hidden');
+      if (initialMock) initialMock.classList.remove('hidden');
+      if (uploadBtn) uploadBtn.disabled = false;
+    }
+  });
+}
+
 // helper delay function
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -1429,3 +1918,1332 @@ const checkInterval = setInterval(() => {
     console.warn('Google Identity Services script did not load in time.');
   }
 }, 300);
+
+// --- BACKLINK TRACKER CLIENT LOGIC ---
+
+// Populates drop-down selection with user's blogs
+function populateBacklinkSites() {
+  const selectSite = document.getElementById('backlink-select-site');
+  if (!selectSite) return;
+
+  // Clear existing options except the manual input
+  selectSite.innerHTML = '<option value="custom" selected>✨ Inserir URL Customizada</option>';
+
+  State.sites.forEach(site => {
+    const domain = site.deployUrl ? site.deployUrl.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '') : site.repoName;
+    const option = document.createElement('option');
+    option.value = site.deployUrl || site.repoName;
+    option.textContent = `${site.repoName} (${domain})`;
+    option.dataset.repo = site.repoName;
+    selectSite.appendChild(option);
+  });
+}
+
+// Toggle manual input group based on dropdown selection
+const selectBacklinkSite = document.getElementById('backlink-select-site');
+const customUrlGroup = document.getElementById('backlink-custom-url-group');
+
+if (selectBacklinkSite && customUrlGroup) {
+  selectBacklinkSite.addEventListener('change', () => {
+    if (selectBacklinkSite.value === 'custom') {
+      customUrlGroup.style.display = 'block';
+    } else {
+      customUrlGroup.style.display = 'none';
+    }
+  });
+}
+
+// Clear Backlink Form
+const btnCancelBacklink = document.getElementById('btn-cancel-backlink');
+if (btnCancelBacklink) {
+  btnCancelBacklink.addEventListener('click', () => {
+    const form = document.getElementById('backlink-tracker-form');
+    if (form) form.reset();
+    if (customUrlGroup) customUrlGroup.style.display = 'block';
+    
+    document.getElementById('backlink-initial-mock').classList.remove('hidden');
+    document.getElementById('backlink-loading-mock').classList.add('hidden');
+    document.getElementById('backlink-results-container').style.display = 'none';
+  });
+}
+
+// Submit Handlers
+const backlinkForm = document.getElementById('backlink-tracker-form');
+if (backlinkForm) {
+  backlinkForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const selectSite = document.getElementById('backlink-select-site').value;
+    let targetUrl = '';
+    
+    if (selectSite === 'custom') {
+      targetUrl = document.getElementById('backlink-custom-url').value.trim();
+    } else {
+      targetUrl = selectSite;
+    }
+    
+    if (!targetUrl) {
+      showToast('Por favor, insira ou selecione uma URL.', 'error');
+      return;
+    }
+    
+    const initialMock = document.getElementById('backlink-initial-mock');
+    const loadingMock = document.getElementById('backlink-loading-mock');
+    const loadingStatus = document.getElementById('backlink-loading-status');
+    const resultsContainer = document.getElementById('backlink-results-container');
+    const analyzeBtn = document.getElementById('btn-analyze-backlink');
+    const resultsTbody = document.getElementById('backlink-results-tbody');
+    
+    // Set UI states
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = '⚡ Analisando...';
+    if (initialMock) initialMock.classList.add('hidden');
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (loadingMock) loadingMock.classList.remove('hidden');
+    
+    // Update steps
+    const steps = {
+      google: document.getElementById('backlink-step-google'),
+      dns: document.getElementById('backlink-step-dns'),
+      geoip: document.getElementById('backlink-step-geoip')
+    };
+    
+    const setStepState = (step, state) => {
+      if (!step) return;
+      if (state === 'active') {
+        step.style.color = 'var(--primary)';
+        step.style.fontWeight = '700';
+      } else if (state === 'done') {
+        step.style.color = 'var(--success)';
+        step.style.fontWeight = '400';
+        step.textContent = step.textContent.replace('⏳', '✓');
+      } else {
+        step.style.color = 'var(--text-muted)';
+        step.style.fontWeight = '400';
+      }
+    };
+    
+    // Restore text
+    if (steps.google) steps.google.textContent = '⏳ Pesquisando backlinks (Gemini Grounding)...';
+    if (steps.dns) steps.dns.textContent = '⏳ Resolvendo IP e servidores DNS...';
+    if (steps.geoip) steps.geoip.textContent = '⏳ Localizando servidores de hospedagem...';
+    
+    try {
+      setStepState(steps.google, 'active');
+      if (loadingStatus) loadingStatus.textContent = 'Pesquisando referências e links reais apontando para o site...';
+      await delay(1000);
+      
+      const response = await fetch('/api/analyze-backlinks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: targetUrl,
+          geminiApiKey: State.credentials.geminiApiKey
+        })
+      });
+      
+      setStepState(steps.google, 'done');
+      setStepState(steps.dns, 'active');
+      if (loadingStatus) loadingStatus.textContent = 'Buscando IP e registros DNS (nameservers)...';
+      await delay(1000);
+      
+      setStepState(steps.dns, 'done');
+      setStepState(steps.geoip, 'active');
+      if (loadingStatus) loadingStatus.textContent = 'Identificando o local físico e provedores de hospedagem...';
+      await delay(800);
+      
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao analisar backlinks.');
+      }
+      
+      setStepState(steps.geoip, 'done');
+      await delay(400);
+      
+      if (loadingMock) loadingMock.classList.add('hidden');
+      if (resultsContainer) resultsContainer.style.display = 'block';
+      
+      // Populate results table
+      resultsTbody.innerHTML = '';
+      if (data.backlinks.length === 0) {
+        resultsTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum link externo encontrado para esta URL.</td></tr>';
+      } else {
+        data.backlinks.forEach((link, idx) => {
+          const row = document.createElement('tr');
+          
+          let relevanceClass = 'relevance-low';
+          if (link.relevance === 'Alta') relevanceClass = 'relevance-high';
+          else if (link.relevance === 'Média') relevanceClass = 'relevance-medium';
+          
+          row.innerHTML = `
+            <td>
+              <strong style="color: #fff; font-size: 15px;">${link.domain}</strong>
+              <div style="font-size: 12px; color: var(--text-muted); max-width: 250px; white-space: normal; margin-top: 4px;">${link.description || ''}</div>
+            </td>
+            <td>
+              <span class="relevance-badge ${relevanceClass}">${link.relevance} (${link.relevanceScore})</span>
+            </td>
+            <td>
+              <code style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-weight: bold; color: var(--primary);">${link.anchorText}</code>
+            </td>
+            <td>
+              <div class="backlink-tech-info">
+                <span>IP: <strong>${link.ip}</strong></span>
+                <span>NS: <strong style="font-size: 11px;">${link.dns}</strong></span>
+              </div>
+            </td>
+            <td>
+              <div class="backlink-tech-info">
+                <span>ISP: <strong>${link.hostingProvider}</strong></span>
+                <span>Local: <strong>${link.hostingLocation}</strong></span>
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn btn-sm btn-primary" onclick="saveBacklink('${link.anchorText.replace(/'/g, "\\'")}', '${link.domain.replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 12px;">Salvar</button>
+                <a href="${link.url}" target="_blank" class="btn btn-sm btn-outline" style="padding: 6px 10px; font-size: 12px; text-decoration: none;">🔗 Link</a>
+              </div>
+            </td>
+          `;
+          resultsTbody.appendChild(row);
+        });
+      }
+      
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+      if (initialMock) initialMock.classList.remove('hidden');
+      if (loadingMock) loadingMock.classList.add('hidden');
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = '⚡ Analisar Backlinks';
+    }
+  });
+}
+
+// Save backlink to LocalStorage list
+window.saveBacklink = function(anchorText, domain) {
+  let saved = [];
+  try {
+    saved = JSON.parse(localStorage.getItem('saas_saved_backlinks')) || [];
+  } catch (e) {
+    saved = [];
+  }
+  
+  // Check if already exists
+  const exists = saved.some(item => item.anchorText.toLowerCase() === anchorText.toLowerCase() && item.domain.toLowerCase() === domain.toLowerCase());
+  if (exists) {
+    showToast('Este link já está salvo na sua lista.', 'warning');
+    return;
+  }
+  
+  saved.push({ anchorText, domain, savedAt: new Date().toISOString() });
+  localStorage.setItem('saas_saved_backlinks', JSON.stringify(saved));
+  
+  showToast('Link salvo com sucesso!', 'success');
+  renderSavedBacklinks();
+};
+
+// Delete backlink from LocalStorage list
+window.deleteSavedBacklink = function(index) {
+  let saved = [];
+  try {
+    saved = JSON.parse(localStorage.getItem('saas_saved_backlinks')) || [];
+  } catch (e) {
+    saved = [];
+  }
+  
+  saved.splice(index, 1);
+  localStorage.setItem('saas_saved_backlinks', JSON.stringify(saved));
+  
+  showToast('Item removido da lista.', 'success');
+  renderSavedBacklinks();
+};
+
+// Render saved backlinks table
+function renderSavedBacklinks() {
+  const savedTbody = document.getElementById('backlink-saved-tbody');
+  if (!savedTbody) return;
+  
+  let saved = [];
+  try {
+    saved = JSON.parse(localStorage.getItem('saas_saved_backlinks')) || [];
+  } catch (e) {
+    saved = [];
+  }
+  
+  if (saved.length === 0) {
+    savedTbody.innerHTML = `
+      <tr class="empty-backlinks-row">
+        <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          Nenhum backlink salvo na lista ainda. Faça uma análise acima e clique em "Salvar" para começar a gerenciar.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  savedTbody.innerHTML = '';
+  saved.forEach((item, idx) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <code style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-weight: bold; color: var(--primary);">${item.anchorText}</code>
+      </td>
+      <td>
+        <strong style="color: #fff;">${item.domain}</strong>
+      </td>
+      <td style="text-align: center;">
+        <button type="button" class="btn btn-sm btn-outline" onclick="deleteSavedBacklink(${idx})" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2); padding: 6px 12px; font-size: 12px;">Remover</button>
+      </td>
+    `;
+    savedTbody.appendChild(row);
+  });
+}
+
+
+// ==========================================
+// SAFIRA AI CHATBOT AGENT INTEGRATION
+// ==========================================
+
+let safiraHistory = [];
+
+function toggleSafiraChat() {
+  const sidebar = document.getElementById('safira-chat-sidebar');
+  const backdrop = document.getElementById('safira-backdrop');
+  if (sidebar && backdrop) {
+    sidebar.classList.toggle('active');
+    backdrop.classList.toggle('active');
+  }
+}
+
+function openSafiraChat() {
+  const sidebar = document.getElementById('safira-chat-sidebar');
+  const backdrop = document.getElementById('safira-backdrop');
+  if (sidebar && backdrop) {
+    sidebar.classList.add('active');
+    backdrop.classList.add('active');
+  }
+}
+
+function closeSafiraChat() {
+  const sidebar = document.getElementById('safira-chat-sidebar');
+  const backdrop = document.getElementById('safira-backdrop');
+  if (sidebar && backdrop) {
+    sidebar.classList.remove('active');
+    backdrop.classList.remove('active');
+  }
+}
+
+function formatSafiraMessage(text) {
+  // Safe escape
+  let cleanText = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Format code blocks
+  cleanText = cleanText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre><code class="language-${lang}">${code.trim()}</code></pre>`;
+  });
+
+  // Format inline code
+  cleanText = cleanText.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Format bold
+  cleanText = cleanText.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>');
+
+  // Format lists & paragraphs
+  const lines = cleanText.split('\n');
+  let inList = false;
+  let formattedLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      if (!inList) {
+        formattedLines.push('<ul>');
+        inList = true;
+      }
+      formattedLines.push(`<li>${line.substring(2)}</li>`);
+    } else {
+      if (inList) {
+        formattedLines.push('</ul>');
+        inList = false;
+      }
+      if (line !== '') {
+        formattedLines.push(`<p>${line}</p>`);
+      }
+    }
+  }
+  if (inList) {
+    formattedLines.push('</ul>');
+  }
+
+  return formattedLines.join('\n');
+}
+
+async function sendSafiraMessage(userText) {
+  if (!userText.trim()) return;
+
+  const chatMessages = document.getElementById('safira-messages');
+  
+  // Render user bubble
+  const userBubble = document.createElement('div');
+  userBubble.className = 'safira-message user';
+  userBubble.innerHTML = `<p>${userText}</p>`;
+  chatMessages.appendChild(userBubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Render typing indicator
+  const typingIndicator = document.createElement('div');
+  typingIndicator.className = 'safira-typing';
+  typingIndicator.id = 'safira-typing-indicator';
+  typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+  chatMessages.appendChild(typingIndicator);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Save in history
+  safiraHistory.push({ role: 'user', text: userText });
+
+  try {
+    const response = await fetch('/api/safira/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: userText,
+        history: safiraHistory.slice(0, -1), // Send previous history
+        userEmail: State.user ? State.user.email : null,
+        geminiApiKey: State.credentials ? State.credentials.geminiApiKey : null
+      })
+    });
+
+    const data = await response.json();
+    
+    // Remove typing indicator
+    const indicator = document.getElementById('safira-typing-indicator');
+    if (indicator) indicator.remove();
+
+    if (data.success && data.message) {
+      let replyText = data.message;
+      
+      // Save model reply in history
+      safiraHistory.push({ role: 'model', text: replyText });
+      
+      // Look for [[ACTION: ...]]
+      let actionMatch = replyText.match(/\[\[ACTION:\s*([\s\S]*?)\s*\]\]/);
+      let actionObj = null;
+      if (actionMatch) {
+        try {
+          actionObj = JSON.parse(actionMatch[1]);
+          // Clean the action text from response message
+          replyText = replyText.replace(/\[\[ACTION:\s*[\s\S]*?\s*\]\]/g, '').trim();
+        } catch (e) {
+          console.error('Failed to parse action json:', e);
+        }
+      }
+
+      // Render assistant bubble
+      const assistantBubble = document.createElement('div');
+      assistantBubble.className = 'safira-message assistant';
+      assistantBubble.innerHTML = formatSafiraMessage(replyText);
+      chatMessages.appendChild(assistantBubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Execute action if matched
+      if (actionObj) {
+        await executeSafiraAction(actionObj);
+      }
+    } else {
+      throw new Error(data.error || 'Erro ao processar resposta.');
+    }
+  } catch (err) {
+    console.error('Safira Chat Error:', err);
+    // Remove typing indicator
+    const indicator = document.getElementById('safira-typing-indicator');
+    if (indicator) indicator.remove();
+
+    const errorBubble = document.createElement('div');
+    errorBubble.className = 'safira-message assistant';
+    errorBubble.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+    errorBubble.innerHTML = `<p style="color: var(--danger);">⚠️ Erro: Desculpe, não consegui processar sua requisição agora. Por favor, tente novamente.</p>`;
+    chatMessages.appendChild(errorBubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+async function executeSafiraAction(action) {
+  console.log('Safira requested action:', action);
+  
+  const chatMessages = document.getElementById('safira-messages');
+  const badge = document.createElement('div');
+  badge.className = 'safira-action-badge';
+  badge.innerHTML = `⚙️ Executando: <strong>${action.type.toUpperCase()}</strong>...`;
+  chatMessages.appendChild(badge);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  try {
+    switch (action.type) {
+      case 'navigate':
+        if (action.params && action.params.target) {
+          showView(action.params.target);
+          badge.innerHTML = `✓ Navegado para a seção: ${action.params.target}`;
+        }
+        break;
+
+      case 'backup':
+        const backupSelect = document.getElementById('backup-select-site');
+        const repoName = (action.params && action.params.repoName) || (backupSelect ? backupSelect.value : '');
+        if (!repoName) {
+          badge.style.color = 'var(--danger)';
+          badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          badge.innerHTML = `⚠️ Erro: Selecione um site antes de fazer backup.`;
+          break;
+        }
+        badge.innerHTML = `💾 Iniciando Backup Neto Salva para ${repoName}...`;
+        
+        const res = await fetch('/api/neto-salva/backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repoName: repoName,
+            description: action.params && action.params.description ? action.params.description : 'Backup via assistente Safira',
+            githubToken: State.credentials.githubToken,
+            userEmail: State.user.email
+          })
+        });
+        const backupData = await res.json();
+        if (backupData.success) {
+          badge.innerHTML = `✓ Backup Neto Salva realizado! Tag: ${backupData.tagName || 'Sucesso'}`;
+          if (typeof loadBackupsList === 'function') loadBackupsList(repoName);
+        } else {
+          throw new Error(backupData.error);
+        }
+        break;
+
+      case 'silo':
+        const siloSelect = document.getElementById('silo-select-site');
+        const siloRepo = (action.params && action.params.repoName) || (siloSelect ? siloSelect.value : '');
+        const siloNiche = (action.params && action.params.niche) || 'Micro-nicho';
+        if (!siloRepo) {
+          badge.style.color = 'var(--danger)';
+          badge.innerHTML = `⚠️ Erro: Repositório não especificado para reestruturação SILO.`;
+          break;
+        }
+        badge.innerHTML = `📐 Reestruturando ${siloRepo} em SILO...`;
+        showView('siloStructure');
+        const sRes = await fetch('/api/restructure-silo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repoName: siloRepo,
+            niche: siloNiche,
+            githubToken: State.credentials.githubToken,
+            geminiApiKey: State.credentials.geminiApiKey,
+            userEmail: State.user.email
+          })
+        });
+        const sData = await sRes.json();
+        if (sData.success) {
+          badge.innerHTML = `✓ Arquitetura SILO gerada com sucesso para ${siloRepo}!`;
+        } else {
+          throw new Error(sData.error);
+        }
+        break;
+
+      case 'google-position':
+        if (!action.params || !action.params.domain || !action.params.keyword) {
+          badge.style.color = 'var(--danger)';
+          badge.innerHTML = `⚠️ Erro: Domínio e palavra-chave necessários.`;
+          break;
+        }
+        badge.innerHTML = `🔍 Analisando posição de "${action.params.keyword}" para ${action.params.domain}...`;
+        showView('sitePosition');
+        const pRes = await fetch('/api/check-google-position', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain: action.params.domain,
+            keyword: action.params.keyword,
+            geminiApiKey: State.credentials.geminiApiKey
+          })
+        });
+        const pData = await pRes.json();
+        if (pData.success) {
+          badge.innerHTML = `✓ Palavra-chave encontrada na Posição #${pData.position} no Google.`;
+        } else {
+          throw new Error(pData.error);
+        }
+        break;
+
+      case 'backlinks':
+        if (!action.params || !action.params.domain) {
+          badge.style.color = 'var(--danger)';
+          badge.innerHTML = `⚠️ Erro: Domínio de destino necessário.`;
+          break;
+        }
+        badge.innerHTML = `🔗 Analisando backlinks de ${action.params.domain}...`;
+        showView('backlinkTracker');
+        const bRes = await fetch('/api/analyze-backlinks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain: action.params.domain,
+            geminiApiKey: State.credentials.geminiApiKey
+          })
+        });
+        const bData = await bRes.json();
+        if (bData.success) {
+          badge.innerHTML = `✓ Análise finalizada. Encontrados ${bData.backlinks ? bData.backlinks.length : 0} backlinks relevantes.`;
+        } else {
+          throw new Error(bData.error);
+        }
+        break;
+
+      case 'generate-single':
+        if (!action.params || !action.params.theme) {
+          badge.style.color = 'var(--danger)';
+          badge.innerHTML = `⚠️ Erro: Tema do artigo em falta.`;
+          break;
+        }
+        badge.innerHTML = `✍️ Preenchendo campos de geração para o tema: ${action.params.theme}...`;
+        showView('newSite');
+        const themeInput = document.getElementById('new-site-niche');
+        const descInput = document.getElementById('new-site-description');
+        if (themeInput) themeInput.value = action.params.theme;
+        if (descInput && action.params.themeDescription) descInput.value = action.params.themeDescription;
+        badge.innerHTML = `✓ Campos preenchidos na seção Criar Blog.`;
+        break;
+
+      default:
+        badge.style.color = 'var(--danger)';
+        badge.innerHTML = `⚠️ Ação não suportada: ${action.type}`;
+    }
+  } catch (err) {
+    console.error('Safira action error:', err);
+    badge.style.color = 'var(--danger)';
+    badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    badge.innerHTML = `⚠️ Falha ao executar ação: ${err.message}`;
+  }
+}
+
+function sendSafiraSuggestion(text) {
+  const input = document.getElementById('safira-chat-input');
+  if (input) {
+    input.value = text;
+    const form = document.getElementById('safira-chat-form');
+    if (form) {
+      // Dispatch submit event
+      const event = new Event('submit', { cancelable: true });
+      form.dispatchEvent(event);
+    }
+  }
+}
+
+function tourClearAllHighlights() {
+  document.querySelectorAll('.tour-highlight').forEach(el => {
+    el.classList.remove('tour-highlight');
+  });
+  document.querySelectorAll('.tour-arrow-indicator').forEach(el => {
+    el.remove();
+  });
+}
+
+window.tourClearAllHighlights = tourClearAllHighlights;
+
+function tourHighlightElement(selector, arrowText, position = 'top') {
+  tourClearAllHighlights();
+  
+  const element = document.querySelector(selector);
+  if (!element) return;
+  
+  element.classList.add('tour-highlight');
+  
+  const indicator = document.createElement('div');
+  indicator.className = `tour-arrow-indicator arrow-${position}`;
+  indicator.innerText = arrowText;
+  document.body.appendChild(indicator);
+  
+  const rect = element.getBoundingClientRect();
+  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  
+  let indicatorLeft = 0;
+  let indicatorTop = 0;
+  
+  if (position === 'top') {
+    indicatorLeft = rect.left + rect.width / 2 + scrollLeft;
+    indicatorTop = rect.top + scrollTop - 45;
+  } else if (position === 'bottom') {
+    indicatorLeft = rect.left + rect.width / 2 + scrollLeft;
+    indicatorTop = rect.bottom + scrollTop + 15;
+  } else if (position === 'left') {
+    indicatorLeft = rect.left + scrollLeft - 150; // offset width approx
+    indicatorTop = rect.top + rect.height / 2 + scrollTop - 15;
+  } else if (position === 'right') {
+    indicatorLeft = rect.right + scrollLeft + 15;
+    indicatorTop = rect.top + rect.height / 2 + scrollTop - 15;
+  }
+  
+  indicator.style.left = `${indicatorLeft}px`;
+  indicator.style.top = `${indicatorTop}px`;
+  
+  // Refine position dynamically after dimensions are known
+  setTimeout(() => {
+    if (position === 'top' || position === 'bottom') {
+      indicator.style.left = `${rect.left + rect.width / 2 + scrollLeft - indicator.offsetWidth / 2}px`;
+    } else if (position === 'left') {
+      indicator.style.left = `${rect.left + scrollLeft - indicator.offsetWidth - 15}px`;
+    }
+  }, 50);
+}
+
+window.tourHighlightElement = tourHighlightElement;
+
+function addSafiraSystemMessage(htmlContent) {
+  const chatMessages = document.getElementById('safira-messages');
+  if (!chatMessages) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'safira-message assistant';
+  bubble.innerHTML = htmlContent;
+  chatMessages.appendChild(bubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function startComeceRapidoJourney() {
+  openSafiraChat();
+  
+  const chatMessages = document.getElementById('safira-messages');
+  if (chatMessages) {
+    chatMessages.innerHTML = '';
+  }
+  
+  showView('niche');
+  
+  addSafiraSystemMessage(`
+    <p>🚀 <strong>Bem-vindo ao Começo Rápido do Gerador Ninja!</strong> 💎</p>
+    <p>Eu sou a <strong>Safira</strong> e vou guiar você fazendo junto cada etapa para criar e lançar seu blog com velocidade e qualidade máxima!</p>
+    <p><strong>Etapa 1 de 6: Escolha do Nicho</strong></p>
+    <p>Veja a seta indicando onde escolher o nicho do seu blog. Use as categorias abaixo para explorar micro nichos já validados.</p>
+    <p>Assim que escolher um nicho ou estiver pronto para prosseguir, clique no botão abaixo:</p>
+    <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(2)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
+      Avançar: Criar Blog ➔
+    </button>
+  `);
+  
+  setTimeout(() => {
+    tourHighlightElement('.macro-card', 'Escolha um Nicho ➔', 'bottom');
+  }, 300);
+}
+
+window.startComeceRapidoJourney = startComeceRapidoJourney;
+
+function advanceComeceRapido(step) {
+  if (step === 2) {
+    showView('newSite');
+    addSafiraSystemMessage(`
+      <p>🧱 <strong>Etapa 2 de 6: Criar Blog</strong></p>
+      <p>Já preenchi os campos principais para você (Tema, Descrição e Repositório) com ideias premium de Turismo Sustentável!</p>
+      <p>Veja a seta apontando para o botão de confirmação ao lado. Basta clicar nele para colocar o blog no ar!</p>
+      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(3)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
+        Avançar: Artigos em Lote ➔
+      </button>
+    `);
+    
+    setTimeout(() => {
+      const selectTheme = document.getElementById('site-theme');
+      if (selectTheme) {
+        selectTheme.value = 'custom';
+        selectTheme.dispatchEvent(new Event('change'));
+      }
+      const customTheme = document.getElementById('site-custom-theme');
+      if (customTheme) {
+        customTheme.value = 'Turismo Sustentável';
+        customTheme.dispatchEvent(new Event('input'));
+      }
+      const siteDesc = document.getElementById('site-description');
+      if (siteDesc) {
+        siteDesc.value = 'Um blog premium focado em turismo sustentável, viagens ecológicas e hotéis verdes de alto padrão.';
+      }
+      tourHighlightElement('#wizard-submit-btn', 'Criar Blog Aqui ➔', 'top');
+    }, 300);
+    
+  } else if (step === 3) {
+    showView('multiGenerator');
+    addSafiraSystemMessage(`
+      <p>📝 <strong>Etapa 3 de 6: Artigos em Lote</strong></p>
+      <p>Já defini a palavra semente <strong>"Hospedagem Ecológica"</strong> no gerador de títulos ao lado.</p>
+      <p>Veja a seta apontando para o botão. Clique nele para buscar títulos otimizados por IA.</p>
+      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(4)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
+        Avançar: Estrutura Silo ➔
+      </button>
+    `);
+    
+    setTimeout(() => {
+      const keywordInput = document.getElementById('multi-seed-keyword');
+      if (keywordInput) {
+        keywordInput.value = 'Hospedagem Ecológica';
+      }
+      tourHighlightElement('#btn-get-ideas', 'Gerar Títulos ➔', 'bottom');
+    }, 300);
+    
+  } else if (step === 4) {
+    showView('siloStructure');
+    addSafiraSystemMessage(`
+      <p>📐 <strong>Etapa 4 de 6: Estrutura Silo</strong></p>
+      <p>Configurei o nicho <strong>"Turismo Sustentável"</strong> na estrutura Silo ao lado.</p>
+      <p>Veja a seta. Clique no botão de planejamento para interligar os artigos do site automaticamente para o Google!</p>
+      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(5)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
+        Avançar: Posição do Site ➔
+      </button>
+    `);
+    
+    setTimeout(() => {
+      const siloNiche = document.getElementById('silo-niche');
+      if (siloNiche) {
+        siloNiche.value = 'Turismo Sustentável';
+      }
+      tourHighlightElement('#btn-analyze-silo', 'Estruturar SILO ➔', 'top');
+    }, 300);
+    
+  } else if (step === 5) {
+    showView('sitePosition');
+    addSafiraSystemMessage(`
+      <p>🔍 <strong>Etapa 5 de 6: Posição do Site</strong></p>
+      <p>Preenchi o monitoramento com o domínio temporário do blog e a palavra-chave ideal para acompanhamento.</p>
+      <p>Basta clicar no botão indicado pela seta para iniciar a auditoria de posicionamento.</p>
+      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(6)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
+        Avançar: Neto Salva ➔
+      </button>
+    `);
+    
+    setTimeout(() => {
+      const posKw = document.getElementById('position-keyword');
+      if (posKw) {
+        posKw.value = 'melhores hoteis sustentaveis';
+      }
+      const posUrl = document.getElementById('position-custom-url');
+      if (posUrl) {
+        posUrl.value = 'turismo-sustentavel-blog.vercel.app';
+      }
+      tourHighlightElement('#btn-analyze-position', 'Acompanhar Posição ➔', 'top');
+    }, 300);
+    
+  } else if (step === 6) {
+    showView('netoSalva');
+    addSafiraSystemMessage(`
+      <p>💾 <strong>Etapa 6 de 6: Neto Salva (Backup)</strong></p>
+      <p>Preenchi a descrição do ponto de restauração de segurança para você.</p>
+      <p>Clique no botão em destaque para realizar o backup completo do seu banco de dados e arquivos!</p>
+      <button class="btn btn-success btn-sm w-100 mt-2" onclick="finishComeceRapido()" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: bold;">
+        Finalizar Jornada 🎉
+      </button>
+    `);
+    
+    setTimeout(() => {
+      const bkpDesc = document.getElementById('backup-description');
+      if (bkpDesc) {
+        bkpDesc.value = 'Backup automático da jornada Comece Rápido';
+      }
+      tourHighlightElement('#btn-create-backup', 'Criar Backup ➔', 'top');
+    }, 300);
+  }
+}
+
+window.advanceComeceRapido = advanceComeceRapido;
+
+function finishComeceRapido() {
+  tourClearAllHighlights();
+  
+  addSafiraSystemMessage(`
+    <p>🎉 <strong>Parabéns! Jornada Concluída!</strong> 🚀</p>
+    <p>Você utilizou com sucesso todas as principais ferramentas do <strong>Gerador Ninja</strong> com máxima velocidade e qualidade.</p>
+    <p>Seu blog está criado, abastecido com artigos, estruturado com SILO, monitorado e com backup garantido.</p>
+    <p>Estou sempre aqui no chat se precisar de mais alguma ajuda ou automação! Bons negócios! 💎</p>
+  `);
+}
+
+window.finishComeceRapido = finishComeceRapido;
+
+// SETUP LISTENERS
+document.addEventListener('DOMContentLoaded', () => {
+  const openBtn = document.getElementById('open-safira-btn');
+  const closeBtn = document.getElementById('safira-close-btn');
+  const floatingBtn = document.getElementById('safira-floating-trigger');
+  const comeceBtn = document.getElementById('comece-rapido-trigger');
+  const backdrop = document.getElementById('safira-backdrop');
+  const chatForm = document.getElementById('safira-chat-form');
+  const chatInput = document.getElementById('safira-chat-input');
+
+  if (openBtn) openBtn.addEventListener('click', (e) => { e.preventDefault(); openSafiraChat(); });
+  if (closeBtn) closeBtn.addEventListener('click', closeSafiraChat);
+  if (floatingBtn) floatingBtn.addEventListener('click', toggleSafiraChat);
+  if (comeceBtn) comeceBtn.addEventListener('click', startComeceRapidoJourney);
+  if (backdrop) backdrop.addEventListener('click', closeSafiraChat);
+
+  if (chatForm) {
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const messageText = chatInput.value.trim();
+      if (messageText) {
+        chatInput.value = '';
+        sendSafiraMessage(messageText);
+      }
+    });
+  }
+
+  // Hook suggestions
+  const sugLego = document.getElementById('safira-sug-lego');
+  const sugBackup = document.getElementById('safira-sug-backup');
+  const sugSilo = document.getElementById('safira-sug-silo');
+  const sugSeo = document.getElementById('safira-sug-seo');
+
+  if (sugLego) sugLego.addEventListener('click', () => sendSafiraSuggestion('Como o Agente Lego funciona?'));
+  if (sugBackup) sugBackup.addEventListener('click', () => sendSafiraSuggestion('Fazer backup Neto Salva'));
+  if (sugSilo) sugSilo.addEventListener('click', () => sendSafiraSuggestion('Quero reestruturar o silo de um dos meus blogs'));
+  if (sugSeo) sugSeo.addEventListener('click', () => sendSafiraSuggestion('Como verificar meu posicionamento no Google?'));
+});
+
+// --- NICHE SELECTOR ENGINE & DATA ---
+
+const NicheData = {
+  macro: [
+    {
+      id: 'health',
+      name: 'Saúde & Bem-estar',
+      icon: '❤️',
+      desc: 'Um mercado eterno focado em longevidade, performance física, mental e bem-estar geral.',
+      subs: [
+        {
+          id: 'sleep',
+          name: 'Sono & Saúde do Sono',
+          icon: '💤',
+          desc: 'Aparelhos, travesseiros e rastreadores para melhorar a qualidade do sono.',
+          micros: [
+            {
+              name: 'Travesseiros e Acessórios para Quem Dorme de Lado',
+              desc: 'Foco exclusivo em reviews de travesseiros ergonômicos, colchões e suportes corporais voltados para a postura de dormir de lado (Side Sleepers), que representa mais de 60% da população mundial.',
+              lucratividade: 'Altas comissões com afiliação da Amazon, parcerias diretas com marcas de colchões D2C (ex: Emma, Casper) e anúncios de alta receita (Mediavine/Raptive).',
+              caseStudy: {
+                site: 'Sleepopolis.com',
+                earnings: 'Adquirido por mais de US$ 5 milhões',
+                strategy: 'Reviews aprofundados de colchões usando testes reais com vídeo e dados detalhados de firmeza e pressão.'
+              },
+              details: [
+                'Foco em termos informativos: "melhor travesseiro de corpo para quem dorme de lado", "dor no ombro ao dormir de lado".',
+                'Público qualificado buscando resolver dores crônicas de postura.',
+                'Alta conversão de afiliação devido ao valor elevado dos colchões sugeridos.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'home-gym',
+          name: 'Academia em Casa',
+          icon: '🏋️',
+          desc: 'Equipamentos compactos e rotinas para treinar sem sair de casa.',
+          micros: [
+            {
+              name: 'Halteres Ajustáveis e Equipamentos Compactos para Apartamento',
+              desc: 'Reviews de equipamentos de musculação inteligentes e modulares que economizam espaço físico em apartamentos e pequenos estúdios.',
+              lucratividade: 'Excelentes comissões na Amazon e marketplaces nacionais. Ticket médio alto com halteres ajustáveis e bancos dobráveis.',
+              caseStudy: {
+                site: 'GarageGymReviews.com',
+                earnings: 'Faturamento estimado de +US$ 300K/mês',
+                strategy: 'Comparativos extremamente detalhados com fotos e testes práticos de durabilidade sob condições extremas.'
+              },
+              details: [
+                'Artigos focados em: "melhores halteres ajustáveis para apartamento", "equipamentos de calistenia compactos".',
+                'Público urbano de classe média com alta intenção de compra imediata.',
+                'Baixa devolução de produtos devido a análises reais que eliminam surpresas.'
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'home',
+      name: 'Casa & Cozinha',
+      icon: '🍳',
+      desc: 'O nicho ideal para review de eletrodomésticos, decoração e itens práticos de dia a dia.',
+      subs: [
+        {
+          id: 'appliances',
+          name: 'Eletrodomésticos Específicos',
+          icon: '🔌',
+          desc: 'Reviews e receitas focados em aparelhos de cozinha modernos.',
+          micros: [
+            {
+              name: 'Acessórios e Receitas de Air Fryer para Idosos',
+              desc: 'Blog nichado em ensinar idosos e solteiros a usar a Air Fryer com receitas simplificadas de poucos passos e reviews dos melhores acessórios (formas de silicone, grelhas, etc.).',
+              lucratividade: 'Anúncios premium, links de afiliados para utensílios e venda de e-books de receitas com fontes grandes e legíveis.',
+              caseStudy: {
+                site: 'AirFryerWorld.com',
+                earnings: 'Faturamento estimado de +US$ 80K/mês',
+                strategy: 'Receitas passo a passo ultra explicadas e com fotos em alta definição dos pratos antes, durante e depois.'
+              },
+              details: [
+                'Foco em: "receitas rápidas na airfryer para duas pessoas", "melhor forma de silicone para fritadeira elétrica".',
+                'Altíssimo volume de tráfego recorrente focado em receitas diárias.',
+                'Engajamento de comunidade muito forte (compartilhamento em grupos de família).'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'coffee',
+          name: 'Cafeteiras e Cultura de Café',
+          icon: '☕',
+          desc: 'Reviews de moedores, grãos e cafeteiras de nível barista.',
+          micros: [
+            {
+              name: 'Moedores Manuais de Alta Precisão e Cafeteiras Expresso Manuais',
+              desc: 'Análises detalhadas de equipamentos manuais e baristas residenciais para entusiastas do café especial de alta qualidade.',
+              lucratividade: 'Parcerias com importadoras de grãos, afiliação de equipamentos de metal premium com ótimas margens.',
+              caseStudy: {
+                site: 'Home-Barista.com',
+                earnings: 'Faturamento estimado de +US$ 50K/mês',
+                strategy: 'Comunidade forte integrada ao blog que gera autoridade imbatível e tráfego orgânico nativo.'
+              },
+              details: [
+                'Keywords: "melhor moedor de café manual para expresso", "como regular cafeteira gaggia classic".',
+                'Nicho de entusiastas que não hesitam em gastar R$ 500+ em um único acessório.',
+                'Fidelização de leitores altíssima.'
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'tech',
+      name: 'Tecnologia & Games',
+      icon: '🎮',
+      desc: 'Reviews de eletrônicos, automação residencial e setups ergonômicos.',
+      subs: [
+        {
+          id: 'smart-home',
+          name: 'Casa Inteligente',
+          icon: '🏠',
+          desc: 'Configurações de automação e reviews de gadgets compatíveis.',
+          micros: [
+            {
+              name: 'Dispositivos e Automações Exclusivas para Apple HomeKit',
+              desc: 'Reviews de lâmpadas, fechaduras e sensores compatíveis 100% com o ecossistema Apple HomeKit e Siri.',
+              lucratividade: 'Público Apple com altíssimo poder aquisitivo. Comissões de produtos premium (fechaduras de R$ 1.500+).',
+              caseStudy: {
+                site: 'HomeKitAuthority.com',
+                earnings: 'Faturamento estimado de +US$ 40K/mês',
+                strategy: 'Guias práticos de solução de problemas e novidades em tempo recorde sobre atualizações do ecossistema.'
+              },
+              details: [
+                'Termos chaves: "melhor fechadura compatível com apple homekit", "como automatizar luzes pela siri".',
+                'Público fiel ao ecossistema Apple que consome muitos gadgets complementares.',
+                'Baixa concorrência em comparação a Alexa/Google Home geral.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'ergonomics',
+          name: 'Teclados & Ergonomia',
+          icon: '⌨️',
+          desc: 'Acessórios de mesa, mouses e teclados mecânicos ergonômicos.',
+          micros: [
+            {
+              name: 'Teclados Mecânicos Bipartidos (Split Keyboards) e Ergonomia',
+              desc: 'Análises e guias de montagem para teclados mecânicos bipartidos que previnem L.E.R. e oferecem conforto supremo no home office.',
+              lucratividade: 'Venda de peças customizadas, cabos premium, afiliação de marcas de nicho ergonômico.',
+              caseStudy: {
+                site: 'SwitchAndClick.com',
+                earnings: 'Faturamento de +US$ 100K/mês (adquirido posteriormente)',
+                strategy: 'Reviews em vídeo comparando o som e a digitação de diferentes interruptores (switches) e designs.'
+              },
+              details: [
+                'Buscas comuns: "melhor teclado ergonômico bipartido", "como programar layout ergodox".',
+                'Público composto por programadores e escritores dispostos a investir em saúde laboral.',
+                'Ótimo nicho para monetizar com infoprodutos (tutoriais de solda/customização).'
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'pets',
+      name: 'Animais de Estimação',
+      icon: '🐾',
+      desc: 'Reviews de alimentos, saúde, brinquedos e cuidados com raças específicas.',
+      subs: [
+        {
+          id: 'dogs',
+          name: 'Cães de Raça Específica',
+          icon: '🐶',
+          desc: 'Cuidados dedicados a uma única raça popular para dominar a autoridade no Google.',
+          micros: [
+            {
+              name: 'Saúde, Dieta e Acessórios Especiais para Buldogue Francês',
+              desc: 'Tudo sobre cuidados preventivos, problemas respiratórios, rações adequadas e coleiras ortopédicas para Buldogues Franceses.',
+              lucratividade: 'Afiliação de rações premium, planos de saúde pet, brinquedos interativos e produtos de limpeza especializados.',
+              caseStudy: {
+                site: 'FrenchieJourney.com',
+                earnings: 'Faturamento estimado de +US$ 20K/mês',
+                strategy: 'Resolução de dúvidas médicas comuns ("por que buldogue francês solta muito pelo?") de forma empática.'
+              },
+              details: [
+                'Consultas comuns: "melhor coleira peitoral para buldogue francês", "ração recomendada para buldogue filhote".',
+                'Donos de cães de raça que tratam os pets como filhos e têm orçamento flexível.',
+                'Extremamente fácil de posicionar no Google devido à especificidade da marca.'
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'hobbies',
+      name: 'Hobbies & Outdoors',
+      icon: '⛺',
+      desc: 'Esportes de aventura, equipamentos de música e colecionáveis.',
+      subs: [
+        {
+          id: 'cycling',
+          name: 'Ciclismo Alternativo',
+          icon: '🚲',
+          desc: 'Bicicletas elétricas de carga, mountain bikes e cicloviagens.',
+          micros: [
+            {
+              name: 'Bicicletas de Carga Elétricas para Famílias',
+              desc: 'Reviews detalhados de bicicletas elétricas com caçambas para transporte de crianças, compras e cargas urbanas.',
+              lucratividade: 'Ticket médio elevadíssimo (bicicletas custando entre R$ 8.000 e R$ 25.000). Altas comissões por venda.',
+              caseStudy: {
+                site: 'ElectricBikeReport.com',
+                earnings: 'Faturamento milionário com publicidade e patrocínio de marcas',
+                strategy: 'Testes práticos de autonomia de bateria subindo ladeiras reais com peso máximo suportado.'
+              },
+              details: [
+                'Foco em buscas como: "melhor e-bike de carga familiar", "bicicleta elétrica para levar duas crianças".',
+                'Nicho em ascensão explosiva com a transição verde de mobilidade urbana.',
+                'Audiência qualificada de pais de classe média-alta preocupados com sustentabilidade.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'aquarismo',
+          name: 'Nano Aquarismo Marinho',
+          icon: '🐠',
+          desc: 'Nano aquários e cultivo de corais exóticos.',
+          micros: [
+            {
+              name: 'Nano Reef Aquariums e Cultivo de Corais Coloridos',
+              desc: 'Guias e análises de equipamentos de filtragem, iluminação LED e suplementos para manter pequenos ecossistemas de corais marinhos em casa.',
+              lucratividade: 'Afiliação de iluminação e filtros de alta tecnologia, banners de lojas especializadas e venda de mudas de corais cultivados.',
+              caseStudy: {
+                site: 'Reef2Rainforest.com',
+                earnings: 'Faturamento estimado de +US$ 35K/mês',
+                strategy: 'Conteúdo científico simplificado com passo a passo para ciclar a água e evitar pragas no aquário.'
+              },
+              details: [
+                'Keywords: "melhor led para nano reef", "como eliminar algas marrons aquario marinho".',
+                'Hobbies caros onde os praticantes compram itens recorrentes de alto valor.',
+                'Fácil diferenciação no Google por imagens e vídeos explicativos.'
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+let selectedMacro = null;
+let selectedSub = null;
+
+function initNicheSelector() {
+  selectedMacro = null;
+  selectedSub = null;
+  
+  // Reset navigation steps
+  updateNicheSteps(1);
+  renderNicheStep1();
+}
+
+function updateNicheSteps(step) {
+  // Update indicators
+  const label = document.getElementById('niche-step-label');
+  if (label) label.textContent = `Passo ${step} de 3`;
+  
+  // Progress tracker classes
+  for (let i = 1; i <= 3; i++) {
+    const progStep = document.getElementById(`prog-step-${i}`);
+    if (progStep) {
+      if (i === step) {
+        progStep.classList.add('active');
+      } else {
+        progStep.classList.remove('active');
+      }
+    }
+  }
+
+  // Display/Hide steps content
+  document.getElementById('niche-step-1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('niche-step-2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('niche-step-3').style.display = step === 3 ? 'block' : 'none';
+}
+
+function renderNicheStep1() {
+  const container = document.getElementById('macro-niche-list');
+  if (!container) return;
+  
+  container.innerHTML = NicheData.macro.map(macro => `
+    <div class="macro-card" data-id="${macro.id}">
+      <div class="macro-card-icon">${macro.icon}</div>
+      <h4>${macro.name}</h4>
+      <p>${macro.desc}</p>
+    </div>
+  `).join('');
+
+  // Attach event listeners
+  container.querySelectorAll('.macro-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const macroId = card.getAttribute('data-id');
+      selectedMacro = NicheData.macro.find(m => m.id === macroId);
+      updateNicheSteps(2);
+      renderNicheStep2();
+    });
+  });
+}
+
+function renderNicheStep2() {
+  const container = document.getElementById('sub-niche-list');
+  const title = document.getElementById('sub-niche-title');
+  if (!container || !selectedMacro) return;
+  
+  if (title) title.textContent = `Macro Nicho: ${selectedMacro.name} → Selecione uma Especialidade:`;
+
+  container.innerHTML = selectedMacro.subs.map(sub => `
+    <div class="sub-card" data-id="${sub.id}">
+      <div class="sub-card-icon">${sub.icon}</div>
+      <div class="sub-card-info">
+        <h4>${sub.name}</h4>
+        <p>${sub.desc}</p>
+      </div>
+    </div>
+  `).join('');
+
+  // Attach event listeners
+  container.querySelectorAll('.sub-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const subId = card.getAttribute('data-id');
+      selectedSub = selectedMacro.subs.find(s => s.id === subId);
+      updateNicheSteps(3);
+      renderNicheStep3();
+    });
+  });
+}
+
+function renderNicheStep3() {
+  const container = document.getElementById('micro-niche-list');
+  const title = document.getElementById('micro-niche-title');
+  if (!container || !selectedSub) return;
+
+  if (title) title.textContent = `Especialidade: ${selectedSub.name} → Micro Nichos Disponíveis:`;
+
+  container.innerHTML = selectedSub.micros.map((micro, index) => `
+    <div class="micro-card">
+      <div class="micro-card-header">
+        <div class="micro-card-title">
+          <h4>${micro.name}</h4>
+          <span class="micro-card-lucrative-badge">🔥 Lucratividade Validada</span>
+        </div>
+      </div>
+      
+      <p class="micro-card-description">${micro.desc}</p>
+      
+      <div class="micro-card-details-grid">
+        <div class="micro-detail-panel">
+          <h5>💸 Por que é Lucrativo?</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">${micro.lucratividade}</p>
+          <h5>🎯 Dicas e Palavras-chave</h5>
+          <ul>
+            ${micro.details.map(detail => `<li>${detail}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <div class="micro-detail-panel micro-case-study">
+          <h5>🇺🇸 Caso de Sucesso Americano</h5>
+          <p style="font-size: 0.85rem; color: var(--text-main); font-weight: bold; margin-bottom: 8px;">
+            Blog de Referência: <span style="color: var(--secondary); font-size: 1rem;">${micro.caseStudy.site}</span>
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+            <strong>Resultado Estimado:</strong> <span class="case-metric">${micro.caseStudy.earnings}</span>
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+            <strong>Estratégia do Case:</strong> ${micro.caseStudy.strategy}
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align: right;">
+        <button type="button" class="btn btn-primary btn-select-micro-niche" data-index="${index}">
+          ⚡ Escolher este Nicho e Criar Blog
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  // Attach event listeners
+  container.querySelectorAll('.btn-select-micro-niche').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-index'), 10);
+      const chosenMicro = selectedSub.micros[idx];
+      
+      selectNicheAndRedirect(chosenMicro);
+    });
+  });
+}
+
+function selectNicheAndRedirect(micro) {
+  // Fill the Create Blog Wizard Form fields
+  if (el.siteTheme) {
+    el.siteTheme.value = 'custom';
+    el.siteTheme.dispatchEvent(new Event('change'));
+  }
+  
+  if (el.siteCustomTheme) {
+    el.siteCustomTheme.value = micro.name;
+    el.siteCustomTheme.dispatchEvent(new Event('input')); // Generate repository slug
+  }
+  
+  if (el.siteDescription) {
+    el.siteDescription.value = `Um blog premium focado em reviews, tutoriais e análises sinceras sobre ${micro.name.toLowerCase()}, ajudando entusiastas a tomarem decisões de compra inteligentes com base em dados de qualidade.`;
+  }
+  
+  showToast(`Nicho "${micro.name}" selecionado com sucesso!`, 'success');
+  
+  // Transition smoothly to Create Blog tab
+  showView('newSite');
+}
+
+// Wire up Back Buttons in DOMContentLoaded step
+document.addEventListener('DOMContentLoaded', () => {
+  const backToStep1 = document.getElementById('btn-back-to-step1');
+  const backToStep2 = document.getElementById('btn-back-to-step2');
+  
+  if (backToStep1) {
+    backToStep1.addEventListener('click', () => {
+      updateNicheSteps(1);
+    });
+  }
+  
+  if (backToStep2) {
+    backToStep2.addEventListener('click', () => {
+      updateNicheSteps(2);
+    });
+  }
+});
+
