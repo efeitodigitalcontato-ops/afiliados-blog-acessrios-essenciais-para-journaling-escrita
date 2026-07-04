@@ -1394,10 +1394,12 @@ async function consolidateRepoQueue(repoName) {
   }
 
   let gToken = DEFAULT_GITHUB_TOKEN;
+  let userEmail = 'rannet10@gmail.com';
   if (fs.existsSync(configFile)) {
     try {
       const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
       if (config.githubToken) gToken = config.githubToken;
+      if (config.userEmail) userEmail = config.userEmail;
     } catch (e) {
       console.error(`Erro ao ler _config.json da fila de ${repoName}:`, e);
     }
@@ -1462,7 +1464,7 @@ async function consolidateRepoQueue(repoName) {
     // Configura e envia via Git nativo
     runGit(`git add .`, cacheDir);
     runGit(`git config user.name "Gerador Ninja"`, cacheDir);
-    runGit(`git config user.email "ninja@geradorninja.com"`, cacheDir);
+    runGit(`git config user.email "${userEmail}"`, cacheDir);
     
     try {
       runGit(`git commit -m "feat: publicacao consolidada diaria de ${files.length} posts"`, cacheDir);
