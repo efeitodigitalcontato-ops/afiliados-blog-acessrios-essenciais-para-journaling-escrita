@@ -2613,45 +2613,168 @@ function addSafiraSystemMessage(htmlContent) {
 }
 
 function startComeceRapidoJourney() {
-  openSafiraChat();
-  
-  const chatMessages = document.getElementById('safira-messages');
-  if (chatMessages) {
-    chatMessages.innerHTML = '';
-  }
+  // Close the Safira chat sidebar so we can guide the user directly on screen
+  closeSafiraChat();
   
   showView('niche');
   
-  addSafiraSystemMessage(`
-    <p>🚀 <strong>Bem-vindo ao Começo Rápido do Gerador Ninja!</strong> 💎</p>
-    <p>Eu sou a <strong>Safira</strong> e vou guiar você fazendo junto cada etapa para criar e lançar seu blog com velocidade e qualidade máxima!</p>
-    <p><strong>Etapa 1 de 6: Escolha do Nicho</strong></p>
-    <p>Veja a seta indicando onde escolher o nicho do seu blog. Use as categorias abaixo para explorar micro nichos já validados.</p>
-    <p>Assim que escolher um nicho ou estiver pronto para prosseguir, clique no botão abaixo:</p>
-    <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(2)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
-      Avançar: Criar Blog ➔
-    </button>
-  `);
-  
   setTimeout(() => {
-    tourHighlightElement('.macro-card', 'Escolha um Nicho ➔', 'bottom');
+    showSafiraComicBubble('.macro-card', 1);
   }, 300);
 }
 
 window.startComeceRapidoJourney = startComeceRapidoJourney;
 
-function advanceComeceRapido(step) {
-  if (step === 2) {
-    showView('newSite');
-    addSafiraSystemMessage(`
-      <p>🧱 <strong>Etapa 2 de 6: Criar Blog</strong></p>
-      <p>Já preenchi os campos principais para você (Tema, Descrição e Repositório) com ideias premium de Turismo Sustentável!</p>
-      <p>Veja a seta apontando para o botão de confirmação ao lado. Basta clicar nele para colocar o blog no ar!</p>
-      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(3)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
-        Avançar: Artigos em Lote ➔
-      </button>
-    `);
+function showSafiraComicBubble(selector, stepIndex) {
+  // Clear any existing comic bubble and arrows
+  const existingBubble = document.getElementById('safira-hq-bubble');
+  if (existingBubble) existingBubble.remove();
+  
+  tourClearAllHighlights();
+  
+  const element = document.querySelector(selector);
+  if (!element) return;
+  
+  // Highlight the target element
+  element.classList.add('tour-highlight');
+  
+  // Steps Data
+  const steps = [
+    {
+      title: "Escolha do Nicho",
+      text: "Selecione o nicho do seu blog. Use as categorias abaixo para explorar micro nichos já validados antes de prosseguir.",
+      position: "bottom"
+    },
+    {
+      title: "Criar Blog",
+      text: "Preenchi os campos de Tema, Descrição e Repositório automaticamente com ideias de Turismo Sustentável. Clique no botão de confirmação para colocar seu blog no ar!",
+      position: "top"
+    },
+    {
+      title: "Artigos em Lote",
+      text: "Já defini a palavra semente 'Hospedagem Ecológica'. Clique no botão indicado pela seta para buscar ideias de títulos gerados por IA.",
+      position: "bottom"
+    },
+    {
+      title: "Estrutura Silo",
+      text: "Configurei o nicho como 'Turismo Sustentável'. Clique no botão de planejamento para interligar os artigos do site automaticamente para o Google!",
+      position: "top"
+    },
+    {
+      title: "Posição do Site",
+      text: "Preenchi o monitoramento com o domínio e a palavra-chave ideal. Basta clicar no botão de análise para verificar seu posicionamento.",
+      position: "top"
+    },
+    {
+      title: "Neto Salva (Backup)",
+      text: "Preenchi a descrição do backup. Clique no botão em destaque para criar um ponto de restauração seguro de todo o seu banco de dados!",
+      position: "top"
+    }
+  ];
+  
+  const currentStep = steps[stepIndex - 1];
+  if (!currentStep) return;
+  
+  // Create comic bubble container
+  const bubble = document.createElement('div');
+  bubble.id = 'safira-hq-bubble';
+  bubble.className = `safira-hq-bubble arrow-${currentStep.position}`;
+  
+  // Populate bubble HTML
+  bubble.innerHTML = `
+    <div class="safira-hq-avatar">💎</div>
+    <div class="safira-hq-bubble-title">Safira</div>
+    <div class="safira-hq-bubble-step">Etapa ${stepIndex} de ${steps.length} — ${currentStep.title}</div>
+    <div class="safira-hq-bubble-text">${currentStep.text}</div>
+    <div class="safira-hq-buttons">
+      ${stepIndex > 1 ? `<button class="safira-hq-btn safira-hq-btn-prev" onclick="advanceComeceRapidoComic(${stepIndex - 1})">◀ Voltar</button>` : '<div></div>'}
+      ${stepIndex < steps.length 
+        ? `<button class="safira-hq-btn safira-hq-btn-next" onclick="advanceComeceRapidoComic(${stepIndex + 1})">Avançar ▶</button>`
+        : `<button class="safira-hq-btn safira-hq-btn-next" onclick="finishComeceRapidoComic()">Finalizar 🎉</button>`
+      }
+      <button class="safira-hq-btn safira-hq-btn-close" onclick="closeComeceRapidoComic()" title="Encerrar Guia">✕</button>
+    </div>
+  `;
+  
+  document.body.appendChild(bubble);
+  
+  // Initial positioning relative to the target element
+  const rect = element.getBoundingClientRect();
+  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  
+  let bubbleLeft = rect.left + rect.width / 2 + scrollLeft;
+  let bubbleTop = rect.bottom + scrollTop + 15;
+  
+  const position = currentStep.position;
+  
+  if (position === 'top') {
+    bubbleTop = rect.top + scrollTop - 200;
+  } else if (position === 'left') {
+    bubbleLeft = rect.left + scrollLeft - 340;
+    bubbleTop = rect.top + rect.height / 2 + scrollTop - 80;
+  } else if (position === 'right') {
+    bubbleLeft = rect.right + scrollLeft + 15;
+    bubbleTop = rect.top + rect.height / 2 + scrollTop - 80;
+  }
+  
+  bubble.style.left = `${bubbleLeft}px`;
+  bubble.style.top = `${bubbleTop}px`;
+  
+  // Refine position dynamically after dimensions are resolved
+  setTimeout(() => {
+    const bubbleWidth = bubble.offsetWidth;
+    const bubbleHeight = bubble.offsetHeight;
     
+    if (position === 'top') {
+      bubble.style.left = `${rect.left + rect.width / 2 + scrollLeft - bubbleWidth / 2}px`;
+      bubble.style.top = `${rect.top + scrollTop - bubbleHeight - 15}px`;
+    } else if (position === 'bottom') {
+      bubble.style.left = `${rect.left + rect.width / 2 + scrollLeft - bubbleWidth / 2}px`;
+      bubble.style.top = `${rect.bottom + scrollTop + 15}px`;
+    } else if (position === 'left') {
+      bubble.style.left = `${rect.left + scrollLeft - bubbleWidth - 15}px`;
+      bubble.style.top = `${rect.top + rect.height / 2 + scrollTop - bubbleHeight / 2}px`;
+    } else if (position === 'right') {
+      bubble.style.left = `${rect.right + scrollLeft + 15}px`;
+      bubble.style.top = `${rect.top + rect.height / 2 + scrollTop - bubbleHeight / 2}px`;
+    }
+    
+    // Auto-scroll to view the highlighted element and the speech bubble smoothly
+    bubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+
+  // Add the pointing arrow indicator at the exact target location
+  const arrowIndicator = document.createElement('div');
+  arrowIndicator.className = `tour-arrow-indicator arrow-${position}`;
+  arrowIndicator.innerText = "AQUI ➔";
+  document.body.appendChild(arrowIndicator);
+
+  if (position === 'top') {
+    arrowIndicator.style.left = `${rect.left + rect.width / 2 + scrollLeft}px`;
+    arrowIndicator.style.top = `${rect.top + scrollTop - 35}px`;
+  } else if (position === 'bottom') {
+    arrowIndicator.style.left = `${rect.left + rect.width / 2 + scrollLeft}px`;
+    arrowIndicator.style.top = `${rect.bottom + scrollTop + 10}px`;
+  }
+  
+  setTimeout(() => {
+    if (position === 'top' || position === 'bottom') {
+      arrowIndicator.style.left = `${rect.left + rect.width / 2 + scrollLeft - arrowIndicator.offsetWidth / 2}px`;
+    }
+  }, 50);
+}
+
+window.showSafiraComicBubble = showSafiraComicBubble;
+
+function advanceComeceRapidoComic(step) {
+  if (step === 1) {
+    showView('niche');
+    setTimeout(() => {
+      showSafiraComicBubble('.macro-card', 1);
+    }, 300);
+  } else if (step === 2) {
+    showView('newSite');
     setTimeout(() => {
       const selectTheme = document.getElementById('site-theme');
       if (selectTheme) {
@@ -2667,58 +2790,28 @@ function advanceComeceRapido(step) {
       if (siteDesc) {
         siteDesc.value = 'Um blog premium focado em turismo sustentável, viagens ecológicas e hotéis verdes de alto padrão.';
       }
-      tourHighlightElement('#wizard-submit-btn', 'Criar Blog Aqui ➔', 'top');
+      showSafiraComicBubble('#wizard-submit-btn', 2);
     }, 300);
-    
   } else if (step === 3) {
     showView('multiGenerator');
-    addSafiraSystemMessage(`
-      <p>📝 <strong>Etapa 3 de 6: Artigos em Lote</strong></p>
-      <p>Já defini a palavra semente <strong>"Hospedagem Ecológica"</strong> no gerador de títulos ao lado.</p>
-      <p>Veja a seta apontando para o botão. Clique nele para buscar títulos otimizados por IA.</p>
-      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(4)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
-        Avançar: Estrutura Silo ➔
-      </button>
-    `);
-    
     setTimeout(() => {
       const keywordInput = document.getElementById('multi-seed-keyword');
       if (keywordInput) {
         keywordInput.value = 'Hospedagem Ecológica';
       }
-      tourHighlightElement('#btn-get-ideas', 'Gerar Títulos ➔', 'bottom');
+      showSafiraComicBubble('#btn-get-ideas', 3);
     }, 300);
-    
   } else if (step === 4) {
     showView('siloStructure');
-    addSafiraSystemMessage(`
-      <p>📐 <strong>Etapa 4 de 6: Estrutura Silo</strong></p>
-      <p>Configurei o nicho <strong>"Turismo Sustentável"</strong> na estrutura Silo ao lado.</p>
-      <p>Veja a seta. Clique no botão de planejamento para interligar os artigos do site automaticamente para o Google!</p>
-      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(5)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
-        Avançar: Posição do Site ➔
-      </button>
-    `);
-    
     setTimeout(() => {
       const siloNiche = document.getElementById('silo-niche');
       if (siloNiche) {
         siloNiche.value = 'Turismo Sustentável';
       }
-      tourHighlightElement('#btn-analyze-silo', 'Estruturar SILO ➔', 'top');
+      showSafiraComicBubble('#btn-analyze-silo', 4);
     }, 300);
-    
   } else if (step === 5) {
     showView('sitePosition');
-    addSafiraSystemMessage(`
-      <p>🔍 <strong>Etapa 5 de 6: Posição do Site</strong></p>
-      <p>Preenchi o monitoramento com o domínio temporário do blog e a palavra-chave ideal para acompanhamento.</p>
-      <p>Basta clicar no botão indicado pela seta para iniciar a auditoria de posicionamento.</p>
-      <button class="btn btn-warning btn-sm w-100 mt-2" onclick="advanceComeceRapido(6)" style="background: linear-gradient(135deg, #f59e0b, #eab308); color: #0f172a; border: none; font-weight: bold;">
-        Avançar: Neto Salva ➔
-      </button>
-    `);
-    
     setTimeout(() => {
       const posKw = document.getElementById('position-keyword');
       if (posKw) {
@@ -2728,34 +2821,34 @@ function advanceComeceRapido(step) {
       if (posUrl) {
         posUrl.value = 'turismo-sustentavel-blog.vercel.app';
       }
-      tourHighlightElement('#btn-analyze-position', 'Acompanhar Posição ➔', 'top');
+      showSafiraComicBubble('#btn-analyze-position', 5);
     }, 300);
-    
   } else if (step === 6) {
     showView('netoSalva');
-    addSafiraSystemMessage(`
-      <p>💾 <strong>Etapa 6 de 6: Neto Salva (Backup)</strong></p>
-      <p>Preenchi a descrição do ponto de restauração de segurança para você.</p>
-      <p>Clique no botão em destaque para realizar o backup completo do seu banco de dados e arquivos!</p>
-      <button class="btn btn-success btn-sm w-100 mt-2" onclick="finishComeceRapido()" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: bold;">
-        Finalizar Jornada 🎉
-      </button>
-    `);
-    
     setTimeout(() => {
       const bkpDesc = document.getElementById('backup-description');
       if (bkpDesc) {
         bkpDesc.value = 'Backup automático da jornada Comece Rápido';
       }
-      tourHighlightElement('#btn-create-backup', 'Criar Backup ➔', 'top');
+      showSafiraComicBubble('#btn-create-backup', 6);
     }, 300);
   }
 }
 
-window.advanceComeceRapido = advanceComeceRapido;
+window.advanceComeceRapidoComic = advanceComeceRapidoComic;
 
-function finishComeceRapido() {
+function finishComeceRapidoComic() {
   tourClearAllHighlights();
+  const existingBubble = document.getElementById('safira-hq-bubble');
+  if (existingBubble) existingBubble.remove();
+  
+  // Reopen the chat sidebar and print a nice final message
+  openSafiraChat();
+  
+  const chatMessages = document.getElementById('safira-messages');
+  if (chatMessages) {
+    chatMessages.innerHTML = '';
+  }
   
   addSafiraSystemMessage(`
     <p>🎉 <strong>Parabéns! Jornada Concluída!</strong> 🚀</p>
@@ -2765,7 +2858,15 @@ function finishComeceRapido() {
   `);
 }
 
-window.finishComeceRapido = finishComeceRapido;
+window.finishComeceRapidoComic = finishComeceRapidoComic;
+
+function closeComeceRapidoComic() {
+  tourClearAllHighlights();
+  const existingBubble = document.getElementById('safira-hq-bubble');
+  if (existingBubble) existingBubble.remove();
+}
+
+window.closeComeceRapidoComic = closeComeceRapidoComic;
 
 // SETUP LISTENERS
 document.addEventListener('DOMContentLoaded', () => {

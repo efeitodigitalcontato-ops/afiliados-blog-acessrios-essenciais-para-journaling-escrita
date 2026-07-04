@@ -1988,5 +1988,182 @@ input:focus, select:focus, textarea:focus {
   to { margin-top: -6px; margin-left: -6px; }
 }
 
+/* Safira Comic Book HQ Bubble */
+.safira-hq-bubble {
+  position: absolute;
+  background: linear-gradient(135deg, #1e1b4b, #0f172a);
+  border: 3px solid #f59e0b;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.3);
+  color: #f8fafc;
+  padding: 16px 20px;
+  z-index: 10005;
+  width: 320px;
+  max-width: 90vw;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  animation: hq-bubble-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes hq-bubble-pop {
+  0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.safira-hq-avatar {
+  position: absolute;
+  top: -24px;
+  left: 20px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border: 3px solid #f59e0b;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  z-index: 10006;
+}
+
+.safira-hq-bubble-title {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f59e0b;
+  font-weight: 800;
+}
+
+.safira-hq-bubble-step {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.safira-hq-bubble-text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  color: #e2e8f0;
+}
+
+.safira-hq-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.safira-hq-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.safira-hq-btn-prev {
+  background: #334155;
+  color: #e2e8f0;
+}
+.safira-hq-btn-prev:hover {
+  background: #475569;
+}
+
+.safira-hq-btn-next {
+  background: linear-gradient(135deg, #f59e0b, #eab308);
+  color: #0f172a;
+}
+.safira-hq-btn-next:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.safira-hq-btn-close {
+  background: #ef4444;
+  color: white;
+}
+.safira-hq-btn-close:hover {
+  background: #dc2626;
+}
+
+/* Bubble pointers (HQ tail) */
+.safira-hq-bubble::after {
+  content: "";
+  position: absolute;
+  border-width: 10px;
+  border-style: solid;
+}
+
+/* Positioning tails */
+.safira-hq-bubble.arrow-top::after {
+  bottom: 100%;
+  left: 50%;
+  margin-left: -10px;
+  border-color: transparent transparent #f59e0b transparent;
+}
+
+.safira-hq-bubble.arrow-bottom::after {
+  top: 100%;
+  left: 50%;
+  margin-left: -10px;
+  border-color: #f59e0b transparent transparent transparent;
+}
+
+.safira-hq-bubble.arrow-left::after {
+  right: 100%;
+  top: 50%;
+  margin-top: -10px;
+  border-color: transparent #f59e0b transparent transparent;
+}
+
+.safira-hq-bubble.arrow-right::after {
+  left: 100%;
+  top: 50%;
+  margin-top: -10px;
+  border-color: transparent transparent transparent #f59e0b;
+}
+
+/* Pointer overlay (masking background color inside) */
+.safira-hq-bubble::before {
+  content: "";
+  position: absolute;
+  border-width: 7px;
+  border-style: solid;
+  z-index: 10006;
+}
+
+.safira-hq-bubble.arrow-top::before {
+  bottom: 100%;
+  left: 50%;
+  margin-left: -7px;
+  border-color: transparent transparent #1e1b4b transparent;
+}
+.safira-hq-bubble.arrow-bottom::before {
+  top: 100%;
+  left: 50%;
+  margin-left: -7px;
+  border-color: #0f172a transparent transparent transparent;
+}
+.safira-hq-bubble.arrow-left::before {
+  right: 100%;
+  top: 50%;
+  margin-top: -7px;
+  border-color: transparent #1e1b4b transparent transparent;
+}
+.safira-hq-bubble.arrow-right::before {
+  left: 100%;
+  top: 50%;
+  margin-top: -7px;
+  border-color: transparent transparent transparent #1e1b4b;
+}
+
 
 
