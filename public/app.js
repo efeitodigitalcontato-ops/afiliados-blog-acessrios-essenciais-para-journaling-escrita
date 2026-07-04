@@ -155,6 +155,40 @@ function showView(viewName) {
     initNicheSelector();
   }
 
+  // Interação inteligente com a jornada da Safira ao trocar de tela
+  if (window.comeceRapidoState && window.comeceRapidoState.active) {
+    let newStep = 0;
+    let selector = '';
+    if (viewName === 'niche') {
+      newStep = 1;
+      selector = '.macro-card';
+      if (window.comeceRapidoState.selectedMacro) selector = '.sub-card';
+      if (window.comeceRapidoState.selectedSub) selector = '.btn-select-micro-niche';
+    } else if (viewName === 'newSite') {
+      newStep = 2;
+      selector = '#wizard-submit-btn';
+    } else if (viewName === 'multiGenerator') {
+      newStep = 3;
+      selector = '#btn-get-ideas';
+    } else if (viewName === 'siloStructure') {
+      newStep = 4;
+      selector = '#btn-analyze-silo';
+    } else if (viewName === 'sitePosition') {
+      newStep = 5;
+      selector = '#btn-analyze-position';
+    } else if (viewName === 'netoSalva') {
+      newStep = 6;
+      selector = '#btn-create-backup';
+    }
+
+    if (newStep > 0) {
+      window.comeceRapidoState.step = newStep;
+      setTimeout(() => {
+        showSafiraComicBubble(selector, newStep);
+      }, 150);
+    }
+  }
+
   // Smooth scroll to top on change
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2976,266 +3010,25 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sugSeo) sugSeo.addEventListener('click', () => sendSafiraSuggestion('Como verificar meu posicionamento no Google?'));
 });
 
-// --- NICHE SELECTOR ENGINE & DATA ---
-
-const NicheData = {
-  macro: [
-    {
-      id: 'health',
-      name: 'Saúde & Bem-estar',
-      icon: '❤️',
-      desc: 'Um mercado eterno focado em longevidade, performance física, mental e bem-estar geral.',
-      subs: [
-        {
-          id: 'sleep',
-          name: 'Sono & Saúde do Sono',
-          icon: '💤',
-          desc: 'Aparelhos, travesseiros e rastreadores para melhorar a qualidade do sono.',
-          micros: [
-            {
-              name: 'Travesseiros e Acessórios para Quem Dorme de Lado',
-              desc: 'Foco exclusivo em reviews de travesseiros ergonômicos, colchões e suportes corporais voltados para a postura de dormir de lado (Side Sleepers), que representa mais de 60% da população mundial.',
-              lucratividade: 'Altas comissões com afiliação da Amazon, parcerias diretas com marcas de colchões D2C (ex: Emma, Casper) e anúncios de alta receita (Mediavine/Raptive).',
-              caseStudy: {
-                site: 'Sleepopolis.com',
-                earnings: 'Adquirido por mais de US$ 5 milhões',
-                strategy: 'Reviews aprofundados de colchões usando testes reais com vídeo e dados detalhados de firmeza e pressão.'
-              },
-              details: [
-                'Foco em termos informativos: "melhor travesseiro de corpo para quem dorme de lado", "dor no ombro ao dormir de lado".',
-                'Público qualificado buscando resolver dores crônicas de postura.',
-                'Alta conversão de afiliação devido ao valor elevado dos colchões sugeridos.'
-              ]
-            }
-          ]
-        },
-        {
-          id: 'home-gym',
-          name: 'Academia em Casa',
-          icon: '🏋️',
-          desc: 'Equipamentos compactos e rotinas para treinar sem sair de casa.',
-          micros: [
-            {
-              name: 'Halteres Ajustáveis e Equipamentos Compactos para Apartamento',
-              desc: 'Reviews de equipamentos de musculação inteligentes e modulares que economizam espaço físico em apartamentos e pequenos estúdios.',
-              lucratividade: 'Excelentes comissões na Amazon e marketplaces nacionais. Ticket médio alto com halteres ajustáveis e bancos dobráveis.',
-              caseStudy: {
-                site: 'GarageGymReviews.com',
-                earnings: 'Faturamento estimado de +US$ 300K/mês',
-                strategy: 'Comparativos extremamente detalhados com fotos e testes práticos de durabilidade sob condições extremas.'
-              },
-              details: [
-                'Artigos focados em: "melhores halteres ajustáveis para apartamento", "equipamentos de calistenia compactos".',
-                'Público urbano de classe média com alta intenção de compra imediata.',
-                'Baixa devolução de produtos devido a análises reais que eliminam surpresas.'
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'home',
-      name: 'Casa & Cozinha',
-      icon: '🍳',
-      desc: 'O nicho ideal para review de eletrodomésticos, decoração e itens práticos de dia a dia.',
-      subs: [
-        {
-          id: 'appliances',
-          name: 'Eletrodomésticos Específicos',
-          icon: '🔌',
-          desc: 'Reviews e receitas focados em aparelhos de cozinha modernos.',
-          micros: [
-            {
-              name: 'Acessórios e Receitas de Air Fryer para Idosos',
-              desc: 'Blog nichado em ensinar idosos e solteiros a usar a Air Fryer com receitas simplificadas de poucos passos e reviews dos melhores acessórios (formas de silicone, grelhas, etc.).',
-              lucratividade: 'Anúncios premium, links de afiliados para utensílios e venda de e-books de receitas com fontes grandes e legíveis.',
-              caseStudy: {
-                site: 'AirFryerWorld.com',
-                earnings: 'Faturamento estimado de +US$ 80K/mês',
-                strategy: 'Receitas passo a passo ultra explicadas e com fotos em alta definição dos pratos antes, durante e depois.'
-              },
-              details: [
-                'Foco em: "receitas rápidas na airfryer para duas pessoas", "melhor forma de silicone para fritadeira elétrica".',
-                'Altíssimo volume de tráfego recorrente focado em receitas diárias.',
-                'Engajamento de comunidade muito forte (compartilhamento em grupos de família).'
-              ]
-            }
-          ]
-        },
-        {
-          id: 'coffee',
-          name: 'Cafeteiras e Cultura de Café',
-          icon: '☕',
-          desc: 'Reviews de moedores, grãos e cafeteiras de nível barista.',
-          micros: [
-            {
-              name: 'Moedores Manuais de Alta Precisão e Cafeteiras Expresso Manuais',
-              desc: 'Análises detalhadas de equipamentos manuais e baristas residenciais para entusiastas do café especial de alta qualidade.',
-              lucratividade: 'Parcerias com importadoras de grãos, afiliação de equipamentos de metal premium com ótimas margens.',
-              caseStudy: {
-                site: 'Home-Barista.com',
-                earnings: 'Faturamento estimado de +US$ 50K/mês',
-                strategy: 'Comunidade forte integrada ao blog que gera autoridade imbatível e tráfego orgânico nativo.'
-              },
-              details: [
-                'Keywords: "melhor moedor de café manual para expresso", "como regular cafeteira gaggia classic".',
-                'Nicho de entusiastas que não hesitam em gastar R$ 500+ em um único acessório.',
-                'Fidelização de leitores altíssima.'
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'tech',
-      name: 'Tecnologia & Games',
-      icon: '🎮',
-      desc: 'Reviews de eletrônicos, automação residencial e setups ergonômicos.',
-      subs: [
-        {
-          id: 'smart-home',
-          name: 'Casa Inteligente',
-          icon: '🏠',
-          desc: 'Configurações de automação e reviews de gadgets compatíveis.',
-          micros: [
-            {
-              name: 'Dispositivos e Automações Exclusivas para Apple HomeKit',
-              desc: 'Reviews de lâmpadas, fechaduras e sensores compatíveis 100% com o ecossistema Apple HomeKit e Siri.',
-              lucratividade: 'Público Apple com altíssimo poder aquisitivo. Comissões de produtos premium (fechaduras de R$ 1.500+).',
-              caseStudy: {
-                site: 'HomeKitAuthority.com',
-                earnings: 'Faturamento estimado de +US$ 40K/mês',
-                strategy: 'Guias práticos de solução de problemas e novidades em tempo recorde sobre atualizações do ecossistema.'
-              },
-              details: [
-                'Termos chaves: "melhor fechadura compatível com apple homekit", "como automatizar luzes pela siri".',
-                'Público fiel ao ecossistema Apple que consome muitos gadgets complementares.',
-                'Baixa concorrência em comparação a Alexa/Google Home geral.'
-              ]
-            }
-          ]
-        },
-        {
-          id: 'ergonomics',
-          name: 'Teclados & Ergonomia',
-          icon: '⌨️',
-          desc: 'Acessórios de mesa, mouses e teclados mecânicos ergonômicos.',
-          micros: [
-            {
-              name: 'Teclados Mecânicos Bipartidos (Split Keyboards) e Ergonomia',
-              desc: 'Análises e guias de montagem para teclados mecânicos bipartidos que previnem L.E.R. e oferecem conforto supremo no home office.',
-              lucratividade: 'Venda de peças customizadas, cabos premium, afiliação de marcas de nicho ergonômico.',
-              caseStudy: {
-                site: 'SwitchAndClick.com',
-                earnings: 'Faturamento de +US$ 100K/mês (adquirido posteriormente)',
-                strategy: 'Reviews em vídeo comparando o som e a digitação de diferentes interruptores (switches) e designs.'
-              },
-              details: [
-                'Buscas comuns: "melhor teclado ergonômico bipartido", "como programar layout ergodox".',
-                'Público composto por programadores e escritores dispostos a investir em saúde laboral.',
-                'Ótimo nicho para monetizar com infoprodutos (tutoriais de solda/customização).'
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'pets',
-      name: 'Animais de Estimação',
-      icon: '🐾',
-      desc: 'Reviews de alimentos, saúde, brinquedos e cuidados com raças específicas.',
-      subs: [
-        {
-          id: 'dogs',
-          name: 'Cães de Raça Específica',
-          icon: '🐶',
-          desc: 'Cuidados dedicados a uma única raça popular para dominar a autoridade no Google.',
-          micros: [
-            {
-              name: 'Saúde, Dieta e Acessórios Especiais para Buldogue Francês',
-              desc: 'Tudo sobre cuidados preventivos, problemas respiratórios, rações adequadas e coleiras ortopédicas para Buldogues Franceses.',
-              lucratividade: 'Afiliação de rações premium, planos de saúde pet, brinquedos interativos e produtos de limpeza especializados.',
-              caseStudy: {
-                site: 'FrenchieJourney.com',
-                earnings: 'Faturamento estimado de +US$ 20K/mês',
-                strategy: 'Resolução de dúvidas médicas comuns ("por que buldogue francês solta muito pelo?") de forma empática.'
-              },
-              details: [
-                'Consultas comuns: "melhor coleira peitoral para buldogue francês", "ração recomendada para buldogue filhote".',
-                'Donos de cães de raça que tratam os pets como filhos e têm orçamento flexível.',
-                'Extremamente fácil de posicionar no Google devido à especificidade da marca.'
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'hobbies',
-      name: 'Hobbies & Outdoors',
-      icon: '⛺',
-      desc: 'Esportes de aventura, equipamentos de música e colecionáveis.',
-      subs: [
-        {
-          id: 'cycling',
-          name: 'Ciclismo Alternativo',
-          icon: '🚲',
-          desc: 'Bicicletas elétricas de carga, mountain bikes e cicloviagens.',
-          micros: [
-            {
-              name: 'Bicicletas de Carga Elétricas para Famílias',
-              desc: 'Reviews detalhados de bicicletas elétricas com caçambas para transporte de crianças, compras e cargas urbanas.',
-              lucratividade: 'Ticket médio elevadíssimo (bicicletas custando entre R$ 8.000 e R$ 25.000). Altas comissões por venda.',
-              caseStudy: {
-                site: 'ElectricBikeReport.com',
-                earnings: 'Faturamento milionário com publicidade e patrocínio de marcas',
-                strategy: 'Testes práticos de autonomia de bateria subindo ladeiras reais com peso máximo suportado.'
-              },
-              details: [
-                'Foco em buscas como: "melhor e-bike de carga familiar", "bicicleta elétrica para levar duas crianças".',
-                'Nicho em ascensão explosiva com a transição verde de mobilidade urbana.',
-                'Audiência qualificada de pais de classe média-alta preocupados com sustentabilidade.'
-              ]
-            }
-          ]
-        },
-        {
-          id: 'aquarismo',
-          name: 'Nano Aquarismo Marinho',
-          icon: '🐠',
-          desc: 'Nano aquários e cultivo de corais exóticos.',
-          micros: [
-            {
-              name: 'Nano Reef Aquariums e Cultivo de Corais Coloridos',
-              desc: 'Guias e análises de equipamentos de filtragem, iluminação LED e suplementos para manter pequenos ecossistemas de corais marinhos em casa.',
-              lucratividade: 'Afiliação de iluminação e filtros de alta tecnologia, banners de lojas especializadas e venda de mudas de corais cultivados.',
-              caseStudy: {
-                site: 'Reef2Rainforest.com',
-                earnings: 'Faturamento estimado de +US$ 35K/mês',
-                strategy: 'Conteúdo científico simplificado com passo a passo para ciclar a água e evitar pragas no aquário.'
-              },
-              details: [
-                'Keywords: "melhor led para nano reef", "como eliminar algas marrons aquario marinho".',
-                'Hobbies caros onde os praticantes compram itens recorrentes de alto valor.',
-                'Fácil diferenciação no Google por imagens e vídeos explicativos.'
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-};
+// --- NICHE SELECTOR ENGINE ---
 
 let selectedMacro = null;
 let selectedSub = null;
+let selectedMicro = null;
+
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 function initNicheSelector() {
   selectedMacro = null;
   selectedSub = null;
+  selectedMicro = null;
   
   // Reset navigation steps
   updateNicheSteps(1);
@@ -3245,10 +3038,10 @@ function initNicheSelector() {
 function updateNicheSteps(step) {
   // Update indicators
   const label = document.getElementById('niche-step-label');
-  if (label) label.textContent = `Passo ${step} de 3`;
+  if (label) label.textContent = `Passo ${step} de 4`;
   
   // Progress tracker classes
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 4; i++) {
     const progStep = document.getElementById(`prog-step-${i}`);
     if (progStep) {
       if (i === step) {
@@ -3263,13 +3056,17 @@ function updateNicheSteps(step) {
   document.getElementById('niche-step-1').style.display = step === 1 ? 'block' : 'none';
   document.getElementById('niche-step-2').style.display = step === 2 ? 'block' : 'none';
   document.getElementById('niche-step-3').style.display = step === 3 ? 'block' : 'none';
+  document.getElementById('niche-step-4').style.display = step === 4 ? 'block' : 'none';
 }
 
 function renderNicheStep1() {
   const container = document.getElementById('macro-niche-list');
   if (!container) return;
   
-  container.innerHTML = NicheData.macro.map(macro => `
+  // Select at least 12 random macro niches each time the user enters
+  const shuffledMacros = shuffleArray(NicheData.macro).slice(0, 12);
+  
+  container.innerHTML = shuffledMacros.map(macro => `
     <div class="macro-card" data-id="${macro.id}">
       <div class="macro-card-icon">${macro.icon}</div>
       <h4>${macro.name}</h4>
@@ -3295,7 +3092,10 @@ function renderNicheStep2() {
   
   if (title) title.textContent = `Macro Nicho: ${selectedMacro.name} → Selecione uma Especialidade:`;
 
-  container.innerHTML = selectedMacro.subs.map(sub => `
+  // Select 8 random sub-niches from the macro pool
+  const shuffledSubs = shuffleArray(selectedMacro.subs).slice(0, 8);
+
+  container.innerHTML = shuffledSubs.map(sub => `
     <div class="sub-card" data-id="${sub.id}">
       <div class="sub-card-icon">${sub.icon}</div>
       <div class="sub-card-info">
@@ -3321,59 +3121,83 @@ function renderNicheStep3() {
   const title = document.getElementById('micro-niche-title');
   if (!container || !selectedSub) return;
 
-  if (title) title.textContent = `Especialidade: ${selectedSub.name} → Micro Nichos Disponíveis:`;
+  if (title) title.textContent = `Especialidade: ${selectedSub.name} → Escolha uma ideia de Micro Nicho:`;
 
+  // Show all 4 micro-niches in the selected sub-niche
   container.innerHTML = selectedSub.micros.map((micro, index) => `
+    <div class="micro-niche-card" data-index="${index}">
+      <div>
+        <h4>${micro.name}</h4>
+        <p>${micro.desc}</p>
+      </div>
+      <span class="select-badge">Ver Análise & Cases →</span>
+    </div>
+  `).join('');
+
+  // Attach event listeners
+  container.querySelectorAll('.micro-niche-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.getAttribute('data-index'), 10);
+      selectedMicro = selectedSub.micros[idx];
+      updateNicheSteps(4);
+      renderNicheStep4();
+    });
+  });
+}
+
+function renderNicheStep4() {
+  const container = document.getElementById('micro-niche-detail-container');
+  const title = document.getElementById('micro-detail-title');
+  if (!container || !selectedMicro) return;
+
+  if (title) title.textContent = `Análise do Micro Nicho: ${selectedMicro.name}`;
+
+  container.innerHTML = `
     <div class="micro-card">
       <div class="micro-card-header">
         <div class="micro-card-title">
-          <h4>${micro.name}</h4>
+          <h4>${selectedMicro.name}</h4>
           <span class="micro-card-lucrative-badge">🔥 Lucratividade Validada</span>
         </div>
       </div>
       
-      <p class="micro-card-description">${micro.desc}</p>
+      <p class="micro-card-description">${selectedMicro.desc}</p>
       
       <div class="micro-card-details-grid">
         <div class="micro-detail-panel">
-          <h5>💸 Por que é Lucrativo?</h5>
-          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">${micro.lucratividade}</p>
+          <h5>💸 Estratégia de Monetização</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">${selectedMicro.lucratividade}</p>
           <h5>🎯 Dicas e Palavras-chave</h5>
           <ul>
-            ${micro.details.map(detail => `<li>${detail}</li>`).join('')}
+            ${selectedMicro.details.map(detail => `<li>${detail}</li>`).join('')}
           </ul>
         </div>
         
         <div class="micro-detail-panel micro-case-study">
-          <h5>🇺🇸 Caso de Sucesso Americano</h5>
+          <h5>🇺🇸 Caso de Sucesso Americano Real</h5>
           <p style="font-size: 0.85rem; color: var(--text-main); font-weight: bold; margin-bottom: 8px;">
-            Blog de Referência: <span style="color: var(--secondary); font-size: 1rem;">${micro.caseStudy.site}</span>
+            Blog de Referência: <span style="color: var(--secondary); font-size: 1rem;">${selectedMicro.caseStudy.site}</span>
           </p>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
-            <strong>Resultado Estimado:</strong> <span class="case-metric">${micro.caseStudy.earnings}</span>
+            <strong>Resultado Real Estimado:</strong> <span class="case-metric">${selectedMicro.caseStudy.earnings}</span>
           </p>
           <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
-            <strong>Estratégia do Case:</strong> ${micro.caseStudy.strategy}
+            <strong>Estratégia Utilizada:</strong> ${selectedMicro.caseStudy.strategy}
           </p>
         </div>
       </div>
 
       <div style="text-align: right;">
-        <button type="button" class="btn btn-primary btn-select-micro-niche" data-index="${index}">
-          ⚡ Escolher este Nicho e Criar Blog
+        <button type="button" class="btn btn-primary btn-select-micro-niche">
+          ⚡ Selecionar este Nicho e Criar Blog
         </button>
       </div>
     </div>
-  `).join('');
+  `;
 
-  // Attach event listeners
-  container.querySelectorAll('.btn-select-micro-niche').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.getAttribute('data-index'), 10);
-      const chosenMicro = selectedSub.micros[idx];
-      
-      selectNicheAndRedirect(chosenMicro);
-    });
+  // Attach event listener to finalize button
+  container.querySelector('.btn-select-micro-niche').addEventListener('click', () => {
+    selectNicheAndRedirect(selectedMicro);
   });
 }
 
@@ -3403,6 +3227,7 @@ function selectNicheAndRedirect(micro) {
 document.addEventListener('DOMContentLoaded', () => {
   const backToStep1 = document.getElementById('btn-back-to-step1');
   const backToStep2 = document.getElementById('btn-back-to-step2');
+  const backToStep3 = document.getElementById('btn-back-to-step3');
   
   if (backToStep1) {
     backToStep1.addEventListener('click', () => {
