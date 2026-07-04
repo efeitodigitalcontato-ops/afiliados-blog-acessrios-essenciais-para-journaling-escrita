@@ -135,7 +135,7 @@ body {
 
 .nav-links {
   display: flex;
-  gap: 28px;
+  gap: 38px;
 }
 
 .nav-link {
@@ -147,8 +147,8 @@ body {
 }
 
 .nav-link:hover, .nav-link.active {
-  color: var(--text-main);
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+  color: #ffaa55;
+  text-shadow: 0 0 8px #ff6600, 0 0 15px #ff9900, 0 0 25px #ff3300;
 }
 
 .hidden {
