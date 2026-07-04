@@ -1050,6 +1050,7 @@ Retorne APENAS o JSON bruto. Não inclua wraps de marcação de bloco de código
 // ROTA 2: GERAÇÃO EM MASSA (LOTE) DE ARTIGOS, IMAGENS E PUSH PRO GITHUB
 app.post('/api/bulk-generate', async (req, res) => {
   const { repoName, posts, githubToken, geminiApiKey, userEmail } = req.body;
+  const scheduleQueue = req.body.scheduleQueue !== false; // Padrão: true (fila ativada automaticamente)
   if (!repoName || !posts || !Array.isArray(posts)) {
     return res.status(400).json({ error: 'Parâmetros inválidos para geração em lote.' });
   }
@@ -1058,20 +1059,30 @@ app.post('/api/bulk-generate', async (req, res) => {
   const apiKey = getValidGeminiKey(geminiApiKey) || process.env.GEMINI_API_KEY || decodeToken('enc:QVEuQWI4Uk42SWxfY2N3UHB3aF9vX3BfSnlTNmM4eVIyM2huWlV5M3NLUTRuOXlKUTQ3UQ==');
   const tempDir = path.join(os.tmpdir(), `bulk-builder-${Date.now()}`);
 
+  const QUEUE_DIR = path.join(__dirname, 'queue');
+  const repoQueueDir = path.join(QUEUE_DIR, repoName);
+  const repoImagesQueueDir = path.join(repoQueueDir, 'images');
+
   try {
     console.log(`Starting bulk generation of ${posts.length} posts for repository ${repoName}...`);
 
-    // 1. Clone/Fetch existing site repository from GitHub to local temp directory
-    fs.mkdirSync(tempDir, { recursive: true });
-    await git.clone({
-      fs,
-      http: gitHttp,
-      dir: tempDir,
-      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-      onAuth: () => ({ username: gToken }),
-      singleBranch: true,
-      depth: 1
-    });
+    if (scheduleQueue) {
+      fs.mkdirSync(repoQueueDir, { recursive: true });
+      fs.mkdirSync(repoImagesQueueDir, { recursive: true });
+      fs.writeFileSync(path.join(repoQueueDir, '_config.json'), JSON.stringify({ githubToken: gToken, userEmail }, null, 2), 'utf8');
+    } else {
+      // 1. Clone/Fetch existing site repository from GitHub to local temp directory
+      fs.mkdirSync(tempDir, { recursive: true });
+      await git.clone({
+        fs,
+        http: gitHttp,
+        dir: tempDir,
+        url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+        onAuth: () => ({ username: gToken }),
+        singleBranch: true,
+        depth: 1
+      });
+    }
 
     const generatedPosts = [];
 
@@ -1079,7 +1090,7 @@ app.post('/api/bulk-generate', async (req, res) => {
     for (const post of posts) {
       const slug = sluggify(post.title).slice(0, 80);
       const postFileName = `${slug}.md`;
-      const postPath = path.join(tempDir, 'src', 'content', 'blog', postFileName);
+      const postPath = scheduleQueue ? null : path.join(tempDir, 'src', 'content', 'blog', postFileName);
 
       // Determine publish date
       let pubDateStr = new Date().toISOString().split('T')[0];
@@ -1168,21 +1179,16 @@ author: "Redação"
 </div>`;
       }
 
-      // Write post file to local cloned directory
-      fs.writeFileSync(postPath, articleContent, 'utf8');
-
       // Process manual or auto image
       let imgName = 'recommended-comfort.jpg';
       if (post.imageOption === 'manual' && post.fileData) {
         const imageBuffer = Buffer.from(post.fileData, 'base64');
         const imgExt = post.fileName ? path.extname(post.fileName) : '.jpg';
         imgName = `${slug}${imgExt}`;
-        const imgPath = path.join(tempDir, 'public', imgName);
+        const imgPath = scheduleQueue ? path.join(repoImagesQueueDir, imgName) : path.join(tempDir, 'public', imgName);
         fs.writeFileSync(imgPath, imageBuffer);
         
-        let content = fs.readFileSync(postPath, 'utf8');
-        content = content.replace('---', `---\nheroImage: "/${imgName}"`);
-        fs.writeFileSync(postPath, content, 'utf8');
+        articleContent = articleContent.replace('---', `---\nheroImage: "/${imgName}"`);
       } else if (post.imageOption === 'auto') {
         let nicheKeywords = 'product';
         const rName = repoName.toLowerCase();
@@ -1208,7 +1214,7 @@ author: "Redação"
         const searchKeyword = keywordsArray[Math.floor(Math.random() * keywordsArray.length)];
 
         imgName = `${slug}.jpg`;
-        const imgPath = path.join(tempDir, 'public', imgName);
+        const imgPath = scheduleQueue ? path.join(repoImagesQueueDir, imgName) : path.join(tempDir, 'public', imgName);
         
         console.log(`Downloading dynamic auto image for "${post.title}" with keywords: "${searchKeyword}"...`);
         try {
@@ -1216,49 +1222,61 @@ author: "Redação"
           await downloadImage(fetchUrl, imgPath);
           console.log(`Successfully downloaded auto image for "${post.title}"!`);
           
-          let content = fs.readFileSync(postPath, 'utf8');
-          content = content.replace('---', `---\nheroImage: "/${imgName}"`);
-          fs.writeFileSync(postPath, content, 'utf8');
+          articleContent = articleContent.replace('---', `---\nheroImage: "/${imgName}"`);
         } catch (err) {
           console.warn(`Failed to download auto image for "${post.title}":`, err.message);
           imgName = 'recommended-comfort.jpg';
-          let content = fs.readFileSync(postPath, 'utf8');
-          content = content.replace('---', `---\nheroImage: "/${imgName}"`);
-          fs.writeFileSync(postPath, content, 'utf8');
+          articleContent = articleContent.replace('---', `---\nheroImage: "/${imgName}"`);
         }
       } else {
         // Fallback default theme image
-        let content = fs.readFileSync(postPath, 'utf8');
-        content = content.replace('---', `---\nheroImage: "/recommended-comfort.jpg"`);
-        fs.writeFileSync(postPath, content, 'utf8');
+        articleContent = articleContent.replace('---', `---\nheroImage: "/recommended-comfort.jpg"`);
+      }
+
+      if (scheduleQueue) {
+        const queueMetadata = {
+          fileName: postFileName,
+          content: articleContent,
+          imageName: (post.imageOption === 'manual' || post.imageOption === 'auto') ? imgName : null,
+          title: post.title,
+          userEmail
+        };
+        fs.writeFileSync(path.join(repoQueueDir, `${slug}.json`), JSON.stringify(queueMetadata, null, 2), 'utf8');
+      } else {
+        fs.writeFileSync(postPath, articleContent, 'utf8');
       }
 
       generatedPosts.push({ title: post.title, slug, status: postStatus });
     }
 
-    // 3. Stage, commit and push changes back to GitHub repo
-    await git.add({ fs, dir: tempDir, filepath: '.' });
-    await git.commit({
-      fs,
-      dir: tempDir,
-      author: {
-        name: 'Gerador Ninja Lote',
-        email: 'ninja@geradorninja.com'
-      },
-      message: `feat: publicacao automatica em lote de ${posts.length} posts`
-    });
+    if (scheduleQueue) {
+      console.log(`Successfully queued ${posts.length} posts for consolidation later!`);
+      res.json({ success: true, queued: true, generatedPosts });
+    } else {
+      // 3. Stage, commit and push changes back to GitHub repo
+      await git.add({ fs, dir: tempDir, filepath: '.' });
+      await git.commit({
+        fs,
+        dir: tempDir,
+        author: {
+          name: 'Gerador Ninja Lote',
+          email: 'ninja@geradorninja.com'
+        },
+        message: `feat: publicacao automatica em lote de ${posts.length} posts`
+      });
 
-    await git.push({
-      fs,
-      http: gitHttp,
-      dir: tempDir,
-      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
-      onAuth: () => ({ username: gToken }),
-      ref: 'main'
-    });
+      await git.push({
+        fs,
+        http: gitHttp,
+        dir: tempDir,
+        url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+        onAuth: () => ({ username: gToken }),
+        ref: 'main'
+      });
 
-    console.log(`Successfully completed batch generation and pushed to GitHub for ${repoName}!`);
-    res.json({ success: true, generatedPosts });
+      console.log(`Successfully completed batch generation and pushed to GitHub for ${repoName}!`);
+      res.json({ success: true, generatedPosts });
+    }
 
   } catch (err) {
     console.error('Batch Generation Error:', err);
@@ -1270,6 +1288,139 @@ author: "Redação"
     } catch (rmErr) {
       console.warn('Could not remove bulk temp folder:', rmErr.message);
     }
+  }
+});
+
+// FUNÇÃO PARA CONSOLIDAR A FILA DE UM REPOSITÓRIO ESPECÍFICO E DAR PUSH
+async function consolidateRepoQueue(repoName) {
+  const QUEUE_DIR = path.join(__dirname, 'queue');
+  const repoQueueDir = path.join(QUEUE_DIR, repoName);
+  const repoImagesQueueDir = path.join(repoQueueDir, 'images');
+  const configFile = path.join(repoQueueDir, '_config.json');
+
+  if (!fs.existsSync(repoQueueDir)) {
+    console.log(`Pasta da fila para ${repoName} não existe.`);
+    return { success: false, reason: 'Fila vazia' };
+  }
+
+  let gToken = DEFAULT_GITHUB_TOKEN;
+  if (fs.existsSync(configFile)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      if (config.githubToken) gToken = config.githubToken;
+    } catch (e) {
+      console.error(`Erro ao ler _config.json da fila de ${repoName}:`, e);
+    }
+  }
+
+  const files = fs.readdirSync(repoQueueDir).filter(f => f.endsWith('.json') && f !== '_config.json');
+  if (files.length === 0) {
+    console.log(`Nenhum artigo agendado na fila para ${repoName}.`);
+    return { success: false, reason: 'Sem posts' };
+  }
+
+  console.log(`Consolidando ${files.length} posts para o repositório ${repoName}...`);
+  const tempDir = path.join(os.tmpdir(), `consolidated-builder-${repoName}-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  try {
+    await git.clone({
+      fs,
+      http: gitHttp,
+      dir: tempDir,
+      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+      onAuth: () => ({ username: gToken }),
+      singleBranch: true,
+      depth: 1
+    });
+
+    for (const f of files) {
+      const filePath = path.join(repoQueueDir, f);
+      const postData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      const destPostPath = path.join(tempDir, 'src', 'content', 'blog', postData.fileName);
+      fs.mkdirSync(path.dirname(destPostPath), { recursive: true });
+      fs.writeFileSync(destPostPath, postData.content, 'utf8');
+
+      if (postData.imageName) {
+        const srcImgPath = path.join(repoImagesQueueDir, postData.imageName);
+        if (fs.existsSync(srcImgPath)) {
+          const destImgPath = path.join(tempDir, 'public', postData.imageName);
+          fs.mkdirSync(path.dirname(destImgPath), { recursive: true });
+          fs.copyFileSync(srcImgPath, destImgPath);
+        }
+      }
+    }
+
+    await git.add({ fs, dir: tempDir, filepath: '.' });
+    await git.commit({
+      fs,
+      dir: tempDir,
+      author: {
+        name: 'Gerador Ninja Consolidador',
+        email: 'ninja@geradorninja.com'
+      },
+      message: `feat: publicacao consolidada diaria de ${files.length} posts`
+    });
+
+    await git.push({
+      fs,
+      http: gitHttp,
+      dir: tempDir,
+      url: `https://github.com/${DEFAULT_ORG}/${repoName}.git`,
+      onAuth: () => ({ username: gToken }),
+      ref: 'main'
+    });
+
+    console.log(`Push consolidado concluído com sucesso para ${repoName}!`);
+    fs.rmSync(repoQueueDir, { recursive: true, force: true });
+    return { success: true, count: files.length };
+  } catch (err) {
+    console.error(`Erro durante a consolidação de ${repoName}:`, err);
+    throw err;
+  } finally {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (rmErr) {
+      console.warn('Não foi possível remover a pasta temporária de consolidação:', rmErr.message);
+    }
+  }
+}
+
+// FUNÇÃO PARA PROCESSAR TODAS AS FILAS
+async function processConsolidatedQueue() {
+  const QUEUE_DIR = path.join(__dirname, 'queue');
+  if (!fs.existsSync(QUEUE_DIR)) return;
+
+  const dirs = fs.readdirSync(QUEUE_DIR).filter(d => {
+    return fs.statSync(path.join(QUEUE_DIR, d)).isDirectory();
+  });
+
+  console.log(`[Scheduler] Iniciando verificação de fila para ${dirs.length} blogs...`);
+  for (const repoName of dirs) {
+    try {
+      await consolidateRepoQueue(repoName);
+    } catch (err) {
+      console.error(`[Scheduler] Erro ao consolidar fila para ${repoName}:`, err.message);
+    }
+  }
+  console.log(`[Scheduler] Processamento da fila concluído.`);
+}
+
+// ROTA PARA EXECUTAR A CONSOLIDAÇÃO MANUALMENTE (PARA TESTES OU EXECUÇÃO FORÇADA)
+app.post('/api/consolidate-queue', async (req, res) => {
+  const { repoName } = req.body;
+  try {
+    if (repoName) {
+      const result = await consolidateRepoQueue(repoName);
+      return res.json({ success: true, message: `Consolidação concluída para ${repoName}`, result });
+    } else {
+      await processConsolidatedQueue();
+      return res.json({ success: true, message: 'Consolidação concluída para todas as filas' });
+    }
+  } catch (err) {
+    console.error('Erro na consolidação manual:', err);
+    res.status(500).json({ error: 'Erro na consolidação manual', details: err.message });
   }
 });
 
@@ -2483,11 +2634,29 @@ author: "Redação"
 `;
 }
 
+// Scheduler to run consolidation at 23:00 (11:00 PM) local time
+function startScheduler() {
+  console.log('Deploy Consolidation Scheduler started.');
+  setInterval(async () => {
+    const now = new Date();
+    // Check if it is exactly 23:00 (11:00 PM) local time
+    if (now.getHours() === 23 && now.getMinutes() === 0) {
+      console.log(`[Scheduler] It is 23:00. Starting consolidated queue processing...`);
+      try {
+        await processConsolidatedQueue();
+      } catch (err) {
+        console.error('[Scheduler] Error during scheduled consolidation:', err);
+      }
+    }
+  }, 60 * 1000); // Check every minute
+}
+
 // Export for Vercel Serverless compatibility
 if (process.env.NODE_ENV !== 'production' && require.main === module) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`SaaS Server running on port ${PORT}`);
+    startScheduler();
   });
 }
 
