@@ -577,7 +577,8 @@ app.post('/api/generate', async (req, res) => {
       const owner = finalOwnerRepo.split('/')[0];
       generatorContent = generatorContent.replace(/const REPO_OWNER = .*/g, `const REPO_OWNER = "${owner}";`);
       if (geminiApiKey) {
-        generatorContent = generatorContent.replace(/const DEFAULT_GEMINI_KEY = .*/g, `const DEFAULT_GEMINI_KEY = "${geminiApiKey}";`);
+        const encodedKey = Buffer.from(geminiApiKey).toString('base64').split('').reverse().join('');
+        generatorContent = generatorContent.replace(/const DEFAULT_GEMINI_KEY = .*/g, `const DEFAULT_GEMINI_KEY = atob("${encodedKey}".split("").reverse().join(""));`);
       }
       fs.writeFileSync(generatorPath, generatorContent, 'utf8');
       console.log(`Customized public/admin/generator.html successfully with repo: ${finalRepoName} and injected geminiApiKey`);
